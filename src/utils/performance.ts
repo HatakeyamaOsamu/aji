@@ -64,12 +64,10 @@ export function rafThrottle<T extends (...args: any[]) => any>(
  * FPS limiter for animation loops
  */
 export class FPSLimiter {
-  private targetFPS: number;
   private frameInterval: number;
   private lastFrameTime: number = 0;
 
   constructor(targetFPS: number = 30) {
-    this.targetFPS = targetFPS;
     this.frameInterval = 1000 / targetFPS;
   }
 
@@ -85,7 +83,6 @@ export class FPSLimiter {
   }
 
   setTargetFPS(fps: number): void {
-    this.targetFPS = fps;
     this.frameInterval = 1000 / fps;
   }
 }
