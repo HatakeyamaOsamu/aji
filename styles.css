@@ -51,6 +51,20 @@ h1 {
     height: 100%;
 }
 
+.voice-info {
+    font-size: 14px;
+    color: #666;
+    padding: 8px 16px;
+    background-color: #242424;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.voice-info span {
+    color: #00ff88;
+    font-weight: 500;
+}
+
 .main-controls {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -180,6 +194,85 @@ input[type="range"]::-moz-range-thumb:hover {
     box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
 }
 
+/* Virtual Keyboard */
+.virtual-keyboard {
+    position: relative;
+    height: 120px;
+    margin-bottom: 30px;
+    background-color: #0a0a0a;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #333;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.piano-key {
+    position: absolute;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.1s;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 8px;
+}
+
+.white-key {
+    width: 38px;
+    height: 80px;
+    background-color: #f0f0f0;
+    border: 1px solid #333;
+    border-radius: 0 0 4px 4px;
+    z-index: 1;
+}
+
+.white-key:hover {
+    background-color: #e0e0e0;
+}
+
+.white-key.active {
+    background-color: #00ff88;
+    transform: translateY(2px);
+}
+
+.black-key {
+    width: 26px;
+    height: 55px;
+    background-color: #1a1a1a;
+    border: 1px solid #111;
+    border-radius: 0 0 3px 3px;
+    z-index: 2;
+}
+
+.black-key:hover {
+    background-color: #2a2a2a;
+}
+
+.black-key.active {
+    background-color: #00cc66;
+    transform: translateY(1px);
+}
+
+.key-label {
+    font-size: 10px;
+    color: #666;
+    font-weight: 500;
+}
+
+.white-key .key-label {
+    color: #333;
+}
+
+.black-key .key-label {
+    color: #999;
+}
+
+.white-key.active .key-label,
+.black-key.active .key-label {
+    color: #000;
+}
+
 footer {
     text-align: center;
 }
@@ -222,5 +315,19 @@ footer {
     
     .master-section {
         grid-column: span 1;
+    }
+    
+    .virtual-keyboard {
+        height: 100px;
+    }
+    
+    .white-key {
+        width: 32px;
+        height: 70px;
+    }
+    
+    .black-key {
+        width: 22px;
+        height: 48px;
     }
 }
