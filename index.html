@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Tone.js Synthesizer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        h1 {
+            margin: 0 0 30px 0;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            color: #333;
+        }
+
+        .piano {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            height: 120px;
+        }
+
+        .white-keys {
+            display: flex;
+            gap: 2px;
+        }
+
+        .key {
+            border-radius: 0 0 4px 4px;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+
+        .white-key {
+            width: 40px;
+            height: 120px;
+            background-color: white;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+
+        .white-key.active {
+            background-color: #e0e0e0;
+            transform: translateY(2px);
+        }
+
+        .black-key {
+            width: 28px;
+            height: 70px;
+            background-color: #333;
+            border: 1px solid #000;
+            position: absolute;
+            top: 0;
+            z-index: 2;
+        }
+
+        .black-key.active {
+            background-color: #666;
+            transform: translateY(2px);
+        }
+
+        /* Black key positions */
+        .black-key[data-key="s"] { left: 26px; }
+        .black-key[data-key="d"] { left: 68px; }
+        .black-key[data-key="g"] { left: 152px; }
+        .black-key[data-key="h"] { left: 194px; }
+        .black-key[data-key="j"] { left: 236px; }
+        .black-key[data-key="2"] { left: 320px; }
+        .black-key[data-key="3"] { left: 362px; }
+        .black-key[data-key="5"] { left: 446px; }
+        .black-key[data-key="6"] { left: 488px; }
+        .black-key[data-key="7"] { left: 530px; }
+
+        canvas {
+            width: 100%;
+            height: 200px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .instructions {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Tone.js Synthesizer</h1>
+        
+        <div class="piano">
+            <div class="white-keys">
+                <!-- Octave 1 -->
+                <div class="key white-key" data-key="z" data-note="C3"></div>
+                <div class="key white-key" data-key="x" data-note="D3"></div>
+                <div class="key white-key" data-key="c" data-note="E3"></div>
+                <div class="key white-key" data-key="v" data-note="F3"></div>
+                <div class="key white-key" data-key="b" data-note="G3"></div>
+                <div class="key white-key" data-key="n" data-note="A3"></div>
+                <div class="key white-key" data-key="m" data-note="B3"></div>
+                <!-- Octave 2 -->
+                <div class="key white-key" data-key="q" data-note="C4"></div>
+                <div class="key white-key" data-key="w" data-note="D4"></div>
+                <div class="key white-key" data-key="e" data-note="E4"></div>
+                <div class="key white-key" data-key="r" data-note="F4"></div>
+                <div class="key white-key" data-key="t" data-note="G4"></div>
+                <div class="key white-key" data-key="y" data-note="A4"></div>
+                <div class="key white-key" data-key="u" data-note="B4"></div>
+                <div class="key white-key" data-key="i" data-note="C5"></div>
+            </div>
+            
+            <!-- Black keys -->
+            <div class="key black-key" data-key="s" data-note="C#3"></div>
+            <div class="key black-key" data-key="d" data-note="D#3"></div>
+            <div class="key black-key" data-key="g" data-note="F#3"></div>
+            <div class="key black-key" data-key="h" data-note="G#3"></div>
+            <div class="key black-key" data-key="j" data-note="A#3"></div>
+            <div class="key black-key" data-key="2" data-note="C#4"></div>
+            <div class="key black-key" data-key="3" data-note="D#4"></div>
+            <div class="key black-key" data-key="5" data-note="F#4"></div>
+            <div class="key black-key" data-key="6" data-note="G#4"></div>
+            <div class="key black-key" data-key="7" data-note="A#4"></div>
+        </div>
+        
+        <canvas id="waveform"></canvas>
+        
+        <p class="instructions">
+            Lower octave: Z-M (white keys), S,D,G,H,J (black keys)<br>
+            Upper octave: Q-I (white keys), 2,3,5,6,7 (black keys)
+        </p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script>
+        // Synthesizer setup
+        const synthOptions = {
+            oscillator: {
+                type: "sawtooth"
+            },
+            envelope: {
+                attack: 0.01,
+                decay: 0.2,
+                sustain: 0.5,
+                release: 0.8
+            },
+            volume: -6
+        };
+        
+        // Active synths
+        const synths = {};
+        let analyser = null;
+        let volume = null;
+        let isAnyKeyActive = false;
+        
+        // Get DOM elements
+        const canvas = document.getElementById('waveform');
+        const ctx = canvas.getContext('2d');
+        const keys = document.querySelectorAll('.key');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Initialize audio chain
+        async function initAudio() {
+            volume = new Tone.Volume(-6);
+            analyser = new Tone.Analyser("waveform", 256);
+            volume.connect(analyser);
+            analyser.toDestination();
+        }
+        
+        // Start note
+        async function startNote(key, note) {
+            if (synths[key]) return; // Already playing
+            
+            if (!analyser) {
+                await initAudio();
+            }
+            
+            await Tone.start();
+            
+            const synth = new Tone.Synth(synthOptions);
+            synth.connect(volume);
+            synth.triggerAttack(note);
+            synths[key] = synth;
+            
+            // Update UI
+            const keyElement = document.querySelector(`[data-key="${key}"]`);
+            if (keyElement) {
+                keyElement.classList.add('active');
+            }
+            
+            if (!isAnyKeyActive) {
+                isAnyKeyActive = true;
+                drawWaveform();
+            }
+        }
+        
+        // Stop note
+        function stopNote(key) {
+            if (!synths[key]) return;
+            
+            synths[key].triggerRelease();
+            
+            // Clean up after release time
+            setTimeout(() => {
+                if (synths[key]) {
+                    synths[key].dispose();
+                    delete synths[key];
+                }
+            }, synthOptions.envelope.release * 1000 + 100);
+            
+            // Update UI
+            const keyElement = document.querySelector(`[data-key="${key}"]`);
+            if (keyElement) {
+                keyElement.classList.remove('active');
+            }
+            
+            setTimeout(() => {
+                if (Object.keys(synths).length === 0) {
+                    isAnyKeyActive = false;
+                }
+            }, synthOptions.envelope.release * 1000 + 100);
+        }
+        
+        // Draw waveform
+        function drawWaveform() {
+            if (!isAnyKeyActive) {
+                ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+                return;
+            }
+            
+            requestAnimationFrame(drawWaveform);
+            
+            const width = canvas.width / window.devicePixelRatio;
+            const height = canvas.height / window.devicePixelRatio;
+            const values = analyser.getValue();
+            
+            ctx.clearRect(0, 0, width, height);
+            ctx.beginPath();
+            ctx.strokeStyle = '#007AFF';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < values.length; i++) {
+                const x = (i / values.length) * width;
+                const y = ((values[i] + 1) / 2) * height;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        // Keyboard event handlers
+        document.addEventListener('keydown', (event) => {
+            const key = event.key.toLowerCase();
+            const keyElement = document.querySelector(`[data-key="${key}"]`);
+            
+            if (keyElement && !event.repeat) {
+                const note = keyElement.dataset.note;
+                startNote(key, note);
+            }
+        });
+        
+        document.addEventListener('keyup', (event) => {
+            const key = event.key.toLowerCase();
+            const keyElement = document.querySelector(`[data-key="${key}"]`);
+            
+            if (keyElement) {
+                stopNote(key);
+            }
+        });
+        
+        // Mouse/touch support
+        keys.forEach(keyElement => {
+            keyElement.addEventListener('mousedown', () => {
+                const key = keyElement.dataset.key;
+                const note = keyElement.dataset.note;
+                startNote(key, note);
+            });
+            
+            keyElement.addEventListener('mouseup', () => {
+                const key = keyElement.dataset.key;
+                stopNote(key);
+            });
+            
+            keyElement.addEventListener('mouseleave', () => {
+                const key = keyElement.dataset.key;
+                stopNote(key);
+            });
+        });
+    </script>
+</body>
+</html>
