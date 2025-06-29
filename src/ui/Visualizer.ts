@@ -1,4 +1,3 @@
-import type { Analyser } from 'tone';
 import type { SynthEngine } from '../synth/SynthEngine';
 
 export class Visualizer {
