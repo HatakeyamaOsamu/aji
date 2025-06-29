@@ -1,6 +1,7 @@
 import type { VirtualKeyNote } from '../types';
 
-export const MAX_VOICES = 8;
+// 同時押しに対応するためボイス数を増加
+export const MAX_VOICES = 16;
 
 export const DEFAULT_SYNTH_OPTIONS = {
   oscillator: {
