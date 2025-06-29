@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 
 interface PianoKeyProps {
   note: string;
@@ -19,30 +19,58 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
   onNoteStart,
   onNoteStop
 }) => {
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // 重複イベント防止用のref
+  const isMouseDownRef = useRef(false);
+  const isTouchActiveRef = useRef(false);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // 既にマウスダウン状態の場合は無視
+    if (isMouseDownRef.current) return;
+    
+    isMouseDownRef.current = true;
     onNoteStart(note);
-  };
+  }, [note, onNoteStart]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isMouseDownRef.current) return;
+    
+    isMouseDownRef.current = false;
     onNoteStop(note);
-  };
+  }, [note, onNoteStop]);
 
-  const handleMouseLeave = () => {
-    if (isActive) {
+  const handleMouseLeave = useCallback(() => {
+    if (isMouseDownRef.current) {
+      isMouseDownRef.current = false;
       onNoteStop(note);
     }
-  };
+  }, [note, onNoteStop]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // タッチイベントが既にアクティブな場合は無視
+    if (isTouchActiveRef.current) return;
+    
+    isTouchActiveRef.current = true;
     onNoteStart(note);
-  };
+  }, [note, onNoteStart]);
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isTouchActiveRef.current) return;
+    
+    isTouchActiveRef.current = false;
     onNoteStop(note);
-  };
+  }, [note, onNoteStop]);
 
   const className = `piano-key ${isBlack ? 'black-key' : 'white-key'} ${isActive ? 'active' : ''}`;
   
@@ -55,6 +83,14 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
       onMouseLeave={handleMouseLeave}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      // グローバルイベントリスナーの追加
+      onMouseEnter={(e) => {
+        // 他のキーからドラッグしてきた場合の処理
+        if (e.buttons === 1 && !isMouseDownRef.current) {
+          isMouseDownRef.current = true;
+          onNoteStart(note);
+        }
+      }}
     >
       {keyboardKey && <span className="key-label">{keyboardKey.toUpperCase()}</span>}
     </div>

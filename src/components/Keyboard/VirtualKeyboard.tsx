@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useSynth } from '../../contexts/SynthContext';
 import { PianoKey } from './PianoKey';
 
@@ -45,44 +45,90 @@ const PIANO_KEYS = [
 export const VirtualKeyboard: React.FC = () => {
   const { startNote, stopNote } = useSynth();
   const [activeKeys, setActiveKeys] = React.useState<Set<string>>(new Set());
+  
+  // キーボードの状態を追跡するためのref
+  const keyStateRef = useRef<Set<string>>(new Set());
+  const pendingStopsRef = useRef<Set<string>>(new Set());
 
   const handleNoteStart = useCallback((note: string) => {
+    // 既にアクティブな場合は無視
+    if (activeKeys.has(note)) return;
+    
+    // ペンディング中の停止をキャンセル
+    if (pendingStopsRef.current.has(note)) {
+      pendingStopsRef.current.delete(note);
+      return;
+    }
+    
     startNote(note, note);
     setActiveKeys(prev => new Set(prev).add(note));
-  }, [startNote]);
+  }, [startNote, activeKeys]);
 
   const handleNoteStop = useCallback((note: string) => {
-    stopNote(note);
-    setActiveKeys(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(note);
-      return newSet;
-    });
-  }, [stopNote]);
+    // アクティブでない場合は無視
+    if (!activeKeys.has(note)) return;
+    
+    // 少し遅延を入れて、急激な切り替えを防ぐ
+    pendingStopsRef.current.add(note);
+    
+    setTimeout(() => {
+      if (pendingStopsRef.current.has(note)) {
+        pendingStopsRef.current.delete(note);
+        stopNote(note);
+        setActiveKeys(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(note);
+          return newSet;
+        });
+      }
+    }, 10);
+  }, [stopNote, activeKeys]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // リピートイベントを無視
       if (e.repeat) return;
-      const note = KEYBOARD_MAP[e.key.toLowerCase()];
-      if (note && !activeKeys.has(note)) {
+      
+      const key = e.key.toLowerCase();
+      const note = KEYBOARD_MAP[key];
+      
+      if (note && !keyStateRef.current.has(key)) {
+        keyStateRef.current.add(key);
         handleNoteStart(note);
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      const note = KEYBOARD_MAP[e.key.toLowerCase()];
-      if (note) {
+      const key = e.key.toLowerCase();
+      const note = KEYBOARD_MAP[key];
+      
+      if (note && keyStateRef.current.has(key)) {
+        keyStateRef.current.delete(key);
         handleNoteStop(note);
       }
     };
 
+    // ウィンドウのフォーカスが外れた時にすべてのキーをリリース
+    const handleBlur = () => {
+      keyStateRef.current.forEach(key => {
+        const note = KEYBOARD_MAP[key];
+        if (note && activeKeys.has(note)) {
+          handleNoteStop(note);
+        }
+      });
+      keyStateRef.current.clear();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      // Stop all active notes on unmount
+      window.removeEventListener('blur', handleBlur);
+      
+      // コンポーネントのアンマウント時にすべての音を停止
       activeKeys.forEach(note => stopNote(note));
     };
   }, [activeKeys, handleNoteStart, handleNoteStop, stopNote]);
