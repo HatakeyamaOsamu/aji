@@ -3,6 +3,7 @@ import { resolve } from 'path';
 
 export default defineConfig({
   root: './',
+  base: '/musako/', // GitHub Pagesのリポジトリ名
   build: {
     outDir: 'dist',
     emptyOutDir: true,
