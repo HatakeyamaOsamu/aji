@@ -55,7 +55,7 @@ export class EffectChain {
     this.reverb.decay = 0.5 + size * 9.5;
   }
 
-  setReverbDampening(frequency: number): void {
+  setReverbDampening(_frequency: number): void {
     // Tone.js Reverb doesn't have a dampening property
     // This method is kept for API compatibility but does nothing
     // TODO: Consider using a different reverb effect or removing this method
