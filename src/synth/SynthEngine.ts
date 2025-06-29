@@ -1,17 +1,18 @@
 import * as Tone from 'tone';
-import { Voice } from './Voice';
+import { VoicePool } from './VoicePool';
 import type { SynthOptions, EffectChain, FilterSettings, DeepPartial } from '../types';
 import { MAX_VOICES, DEFAULT_SYNTH_OPTIONS, DEFAULT_FILTER_SETTINGS } from '../utils/constants';
 
 export class SynthEngine {
-  private activeVoices: Map<string, Voice> = new Map();
-  private voiceCount = 0;
+  private voicePool: VoicePool;
   private synthOptions: SynthOptions = { ...DEFAULT_SYNTH_OPTIONS };
   private filterSettings: FilterSettings = { ...DEFAULT_FILTER_SETTINGS };
   private effectChain: EffectChain | null = null;
   private onVoiceCountChange?: (count: number) => void;
+  private releaseTimeouts: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
   constructor() {
+    this.voicePool = new VoicePool(MAX_VOICES, this.synthOptions);
     this.initAudio();
   }
 
@@ -76,6 +77,9 @@ export class SynthEngine {
     if (options.envelope) {
       this.synthOptions.envelope = { ...this.synthOptions.envelope, ...options.envelope };
     }
+    
+    // Update voice pool with new options
+    this.voicePool.updateSynthOptions(this.synthOptions);
   }
 
   setFilterSettings(settings: Partial<FilterSettings>): void {
@@ -94,8 +98,12 @@ export class SynthEngine {
   }
 
   async startNote(key: string, note: string): Promise<void> {
-    if (this.activeVoices.has(key)) return;
-    if (this.voiceCount >= MAX_VOICES) return;
+    // Clear any pending release timeout for this key
+    const existingTimeout = this.releaseTimeouts.get(key);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      this.releaseTimeouts.delete(key);
+    }
     
     if (!this.effectChain) {
       await this.initAudio();
@@ -103,30 +111,31 @@ export class SynthEngine {
     
     await Tone.start();
     
-    const voice = new Voice(key, note, this.synthOptions);
+    const voice = this.voicePool.acquire(key, note);
+    if (!voice) return; // No available voices or key already active
+    
     voice.connect(this.effectChain!.filter);
     voice.triggerAttack(note);
     
-    this.activeVoices.set(key, voice);
-    this.voiceCount++;
-    this.onVoiceCountChange?.(this.voiceCount);
+    this.onVoiceCountChange?.(this.voicePool.getActiveCount());
   }
 
   stopNote(key: string): void {
-    const voice = this.activeVoices.get(key);
+    const voice = this.voicePool.getActiveVoice(key);
     if (!voice) return;
     
     voice.triggerRelease();
     
-    setTimeout(() => {
-      if (this.activeVoices.has(key)) {
-        const v = this.activeVoices.get(key)!;
-        v.dispose();
-        this.activeVoices.delete(key);
-        this.voiceCount--;
-        this.onVoiceCountChange?.(this.voiceCount);
-      }
-    }, this.synthOptions.envelope.release * 1000 + 100);
+    // Schedule voice cleanup after release time
+    const releaseTime = this.synthOptions.envelope.release * 1000 + 100;
+    const timeout = setTimeout(() => {
+      voice.disconnect();
+      this.voicePool.release(key);
+      this.releaseTimeouts.delete(key);
+      this.onVoiceCountChange?.(this.voicePool.getActiveCount());
+    }, releaseTime);
+    
+    this.releaseTimeouts.set(key, timeout);
   }
 
   getEffectChain(): EffectChain | null {
@@ -134,10 +143,27 @@ export class SynthEngine {
   }
 
   getVoiceCount(): number {
-    return this.voiceCount;
+    return this.voicePool.getActiveCount();
   }
 
   getAnalyser(): Tone.Analyser | null {
     return this.effectChain?.analyser || null;
+  }
+
+  dispose(): void {
+    // Clear all timeouts
+    this.releaseTimeouts.forEach(timeout => clearTimeout(timeout));
+    this.releaseTimeouts.clear();
+    
+    // Dispose of voice pool and effects
+    this.voicePool.dispose();
+    
+    if (this.effectChain) {
+      Object.values(this.effectChain).forEach(effect => {
+        if (effect && 'dispose' in effect) {
+          effect.dispose();
+        }
+      });
+    }
   }
 }
