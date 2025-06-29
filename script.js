@@ -11,16 +11,51 @@ let synthOptions = {
     }
 };
 
-// Audio chain
+// Audio chain components
 const synths = {};
 let masterVolume = null;
+let filter = null;
+let delay = null;
+let reverb = null;
 let analyser = null;
 let isAnyKeyActive = false;
 
+// Filter settings
+let filterSettings = {
+    type: "lowpass",
+    frequency: 2000,
+    Q: 1
+};
+
 // Initialize audio chain
 async function initAudio() {
+    // Create effects chain
     masterVolume = new Tone.Volume(-6).toDestination();
     analyser = new Tone.Analyser("waveform", 256);
+    
+    // Create effects
+    reverb = new Tone.Reverb({
+        decay: 2.5,
+        preDelay: 0.01,
+        wet: 0
+    });
+    
+    delay = new Tone.FeedbackDelay({
+        delayTime: 0.25,
+        feedback: 0.3,
+        wet: 0
+    });
+    
+    filter = new Tone.Filter({
+        type: filterSettings.type,
+        frequency: filterSettings.frequency,
+        Q: filterSettings.Q
+    });
+    
+    // Connect audio chain: synth -> filter -> delay -> reverb -> volume -> analyser -> destination
+    filter.connect(delay);
+    delay.connect(reverb);
+    reverb.connect(masterVolume);
     masterVolume.connect(analyser);
 }
 
@@ -44,6 +79,18 @@ document.querySelectorAll('.waveform-button').forEach(button => {
         document.querySelectorAll('.waveform-button').forEach(b => b.classList.remove('active'));
         button.classList.add('active');
         synthOptions.oscillator.type = button.dataset.waveform;
+    });
+});
+
+// Filter type selector
+document.querySelectorAll('.filter-type-button').forEach(button => {
+    button.addEventListener('click', () => {
+        document.querySelectorAll('.filter-type-button').forEach(b => b.classList.remove('active'));
+        button.classList.add('active');
+        filterSettings.type = button.dataset.filter;
+        if (filter) {
+            filter.type = filterSettings.type;
+        }
     });
 });
 
@@ -78,9 +125,86 @@ volumeSlider.addEventListener('input', (e) => {
     const volumePercent = parseInt(e.target.value);
     document.getElementById('volume-value').textContent = `${volumePercent}%`;
     if (masterVolume) {
-        // Convert percentage to dB (0% = -60dB, 100% = 0dB)
         const volumeDb = (volumePercent / 100) * 60 - 60;
         masterVolume.volume.value = volumeDb;
+    }
+});
+
+// Filter controls
+const filterCutoffSlider = document.getElementById('filter-cutoff');
+const filterResonanceSlider = document.getElementById('filter-resonance');
+
+filterCutoffSlider.addEventListener('input', (e) => {
+    filterSettings.frequency = parseFloat(e.target.value);
+    document.getElementById('filter-cutoff-value').textContent = `${Math.round(e.target.value)}Hz`;
+    if (filter) {
+        filter.frequency.value = filterSettings.frequency;
+    }
+});
+
+filterResonanceSlider.addEventListener('input', (e) => {
+    filterSettings.Q = parseFloat(e.target.value);
+    document.getElementById('filter-resonance-value').textContent = e.target.value;
+    if (filter) {
+        filter.Q.value = filterSettings.Q;
+    }
+});
+
+// Delay controls
+const delayTimeSlider = document.getElementById('delay-time');
+const delayFeedbackSlider = document.getElementById('delay-feedback');
+const delayMixSlider = document.getElementById('delay-mix');
+
+delayTimeSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('delay-time-value').textContent = `${value}s`;
+    if (delay) {
+        delay.delayTime.value = value;
+    }
+});
+
+delayFeedbackSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('delay-feedback-value').textContent = `${Math.round(value * 100)}%`;
+    if (delay) {
+        delay.feedback.value = value;
+    }
+});
+
+delayMixSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('delay-mix-value').textContent = `${Math.round(value * 100)}%`;
+    if (delay) {
+        delay.wet.value = value;
+    }
+});
+
+// Reverb controls
+const reverbSizeSlider = document.getElementById('reverb-size');
+const reverbDampeningSlider = document.getElementById('reverb-dampening');
+const reverbMixSlider = document.getElementById('reverb-mix');
+
+reverbSizeSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('reverb-size-value').textContent = `${Math.round(value * 100)}%`;
+    if (reverb) {
+        reverb.decay = 0.5 + value * 9.5; // 0.5s to 10s
+    }
+});
+
+reverbDampeningSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('reverb-dampening-value').textContent = `${Math.round(value)}Hz`;
+    if (reverb) {
+        reverb.dampening = value;
+    }
+});
+
+reverbMixSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('reverb-mix-value').textContent = `${Math.round(value * 100)}%`;
+    if (reverb) {
+        reverb.wet.value = value;
     }
 });
 
@@ -107,7 +231,7 @@ async function startNote(key, note) {
     await Tone.start();
     
     const synth = new Tone.Synth(synthOptions);
-    synth.connect(masterVolume);
+    synth.connect(filter);
     synth.triggerAttack(note);
     synths[key] = synth;
     
@@ -140,7 +264,7 @@ function stopNote(key) {
 // Draw waveform
 function drawWaveform() {
     if (!isAnyKeyActive) {
-        ctx.fillStyle = '#1d1d1f';
+        ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
         return;
     }
@@ -151,11 +275,11 @@ function drawWaveform() {
     const height = canvas.height / window.devicePixelRatio;
     const values = analyser.getValue();
     
-    ctx.fillStyle = '#1d1d1f';
+    ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, width, height);
     
     ctx.beginPath();
-    ctx.strokeStyle = '#0071e3';
+    ctx.strokeStyle = '#00ff88';
     ctx.lineWidth = 2;
     
     for (let i = 0; i < values.length; i++) {
@@ -173,7 +297,7 @@ function drawWaveform() {
 }
 
 // Initialize waveform display
-ctx.fillStyle = '#1d1d1f';
+ctx.fillStyle = '#1a1a1a';
 ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 
 // Keyboard event handlers
