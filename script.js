@@ -11,14 +11,18 @@ let synthOptions = {
     }
 };
 
+// Polyphonic voice management
+const MAX_VOICES = 8;
+let activeVoices = new Map(); // Map<noteKey, voice>
+let voiceCount = 0;
+
 // Audio chain components
-const synths = {};
 let masterVolume = null;
 let filter = null;
+let chorus = null;
 let delay = null;
 let reverb = null;
 let analyser = null;
-let isAnyKeyActive = false;
 
 // Filter settings
 let filterSettings = {
@@ -46,17 +50,39 @@ async function initAudio() {
         wet: 0
     });
     
+    chorus = new Tone.Chorus({
+        frequency: 1.5,
+        delayTime: 3.5,
+        depth: 0.7,
+        type: "sine",
+        spread: 180,
+        wet: 0
+    });
+    
     filter = new Tone.Filter({
         type: filterSettings.type,
         frequency: filterSettings.frequency,
         Q: filterSettings.Q
     });
     
-    // Connect audio chain: synth -> filter -> delay -> reverb -> volume -> analyser -> destination
-    filter.connect(delay);
+    // Connect audio chain: synth -> filter -> chorus -> delay -> reverb -> volume -> analyser -> destination
+    filter.connect(chorus);
+    chorus.connect(delay);
     delay.connect(reverb);
     reverb.connect(masterVolume);
     masterVolume.connect(analyser);
+}
+
+// Create a single voice
+function createVoice() {
+    const synth = new Tone.Synth(synthOptions);
+    synth.connect(filter);
+    return synth;
+}
+
+// Update voice count display
+function updateVoiceCount() {
+    document.getElementById('voice-count').textContent = voiceCount;
 }
 
 // Get DOM elements
@@ -150,6 +176,35 @@ filterResonanceSlider.addEventListener('input', (e) => {
     }
 });
 
+// Chorus controls
+const chorusFrequencySlider = document.getElementById('chorus-frequency');
+const chorusDepthSlider = document.getElementById('chorus-depth');
+const chorusMixSlider = document.getElementById('chorus-mix');
+
+chorusFrequencySlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('chorus-frequency-value').textContent = `${value}Hz`;
+    if (chorus) {
+        chorus.frequency.value = value;
+    }
+});
+
+chorusDepthSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('chorus-depth-value').textContent = `${Math.round(value * 100)}%`;
+    if (chorus) {
+        chorus.depth = value;
+    }
+});
+
+chorusMixSlider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    document.getElementById('chorus-mix-value').textContent = `${Math.round(value * 100)}%`;
+    if (chorus) {
+        chorus.wet.value = value;
+    }
+});
+
 // Delay controls
 const delayTimeSlider = document.getElementById('delay-time');
 const delayFeedbackSlider = document.getElementById('delay-feedback');
@@ -220,9 +275,103 @@ const keyToNote = {
     '7': 'A#4', 'u': 'B4', 'i': 'C5'
 };
 
-// Start note
+// Virtual keyboard mapping
+const virtualKeyboardNotes = [
+    {note: 'C3', isBlack: false, key: 'z'},
+    {note: 'C#3', isBlack: true, key: 's'},
+    {note: 'D3', isBlack: false, key: 'x'},
+    {note: 'D#3', isBlack: true, key: 'd'},
+    {note: 'E3', isBlack: false, key: 'c'},
+    {note: 'F3', isBlack: false, key: 'v'},
+    {note: 'F#3', isBlack: true, key: 'g'},
+    {note: 'G3', isBlack: false, key: 'b'},
+    {note: 'G#3', isBlack: true, key: 'h'},
+    {note: 'A3', isBlack: false, key: 'n'},
+    {note: 'A#3', isBlack: true, key: 'j'},
+    {note: 'B3', isBlack: false, key: 'm'},
+    {note: 'C4', isBlack: false, key: 'q'},
+    {note: 'C#4', isBlack: true, key: '2'},
+    {note: 'D4', isBlack: false, key: 'w'},
+    {note: 'D#4', isBlack: true, key: '3'},
+    {note: 'E4', isBlack: false, key: 'e'},
+    {note: 'F4', isBlack: false, key: 'r'},
+    {note: 'F#4', isBlack: true, key: '5'},
+    {note: 'G4', isBlack: false, key: 't'},
+    {note: 'G#4', isBlack: true, key: '6'},
+    {note: 'A4', isBlack: false, key: 'y'},
+    {note: 'A#4', isBlack: true, key: '7'},
+    {note: 'B4', isBlack: false, key: 'u'},
+    {note: 'C5', isBlack: false, key: 'i'}
+];
+
+// Create virtual keyboard
+function createVirtualKeyboard() {
+    const keyboard = document.getElementById('virtual-keyboard');
+    let whiteKeyIndex = 0;
+    
+    virtualKeyboardNotes.forEach((noteData, index) => {
+        const key = document.createElement('div');
+        key.className = noteData.isBlack ? 'piano-key black-key' : 'piano-key white-key';
+        key.dataset.note = noteData.note;
+        key.dataset.key = noteData.key;
+        
+        // Position black keys
+        if (noteData.isBlack) {
+            const blackKeyPositions = {
+                'C#': 1, 'D#': 2, 'F#': 4, 'G#': 5, 'A#': 6
+            };
+            const noteName = noteData.note.slice(0, -1);
+            const position = blackKeyPositions[noteName] || 1;
+            key.style.left = `${(position - 0.35) * 40}px`;
+        } else {
+            key.style.left = `${whiteKeyIndex * 40}px`;
+            whiteKeyIndex++;
+        }
+        
+        // Add key label
+        const label = document.createElement('span');
+        label.className = 'key-label';
+        label.textContent = noteData.key.toUpperCase();
+        key.appendChild(label);
+        
+        // Mouse events
+        key.addEventListener('mousedown', () => startNoteFromVirtualKeyboard(noteData.note));
+        key.addEventListener('mouseup', () => stopNote(noteData.note));
+        key.addEventListener('mouseleave', () => stopNote(noteData.note));
+        
+        // Touch events
+        key.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startNoteFromVirtualKeyboard(noteData.note);
+        });
+        key.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopNote(noteData.note);
+        });
+        
+        keyboard.appendChild(key);
+    });
+}
+
+// Start note from virtual keyboard
+async function startNoteFromVirtualKeyboard(note) {
+    if (!masterVolume) {
+        await initAudio();
+    }
+    await Tone.start();
+    startNote(note, note);
+    
+    // Highlight key
+    const keyElement = document.querySelector(`.piano-key[data-note="${note}"]`);
+    if (keyElement) {
+        keyElement.classList.add('active');
+    }
+}
+
+// Start note (polyphonic)
 async function startNote(key, note) {
-    if (synths[key]) return;
+    if (activeVoices.has(key)) return;
+    if (voiceCount >= MAX_VOICES) return;
     
     if (!masterVolume) {
         await initAudio();
@@ -230,40 +379,44 @@ async function startNote(key, note) {
     
     await Tone.start();
     
-    const synth = new Tone.Synth(synthOptions);
-    synth.connect(filter);
-    synth.triggerAttack(note);
-    synths[key] = synth;
+    const voice = createVoice();
+    voice.triggerAttack(note);
+    activeVoices.set(key, voice);
+    voiceCount++;
+    updateVoiceCount();
     
-    if (!isAnyKeyActive) {
-        isAnyKeyActive = true;
+    if (voiceCount === 1) {
         drawWaveform();
     }
 }
 
 // Stop note
 function stopNote(key) {
-    if (!synths[key]) return;
+    const voice = activeVoices.get(key);
+    if (!voice) return;
     
-    synths[key].triggerRelease();
+    voice.triggerRelease();
+    
+    // Remove key highlight
+    const keyElement = document.querySelector(`.piano-key[data-note="${key}"]`);
+    if (keyElement) {
+        keyElement.classList.remove('active');
+    }
     
     setTimeout(() => {
-        if (synths[key]) {
-            synths[key].dispose();
-            delete synths[key];
-        }
-    }, synthOptions.envelope.release * 1000 + 100);
-    
-    setTimeout(() => {
-        if (Object.keys(synths).length === 0) {
-            isAnyKeyActive = false;
+        if (activeVoices.has(key)) {
+            const v = activeVoices.get(key);
+            v.dispose();
+            activeVoices.delete(key);
+            voiceCount--;
+            updateVoiceCount();
         }
     }, synthOptions.envelope.release * 1000 + 100);
 }
 
 // Draw waveform
 function drawWaveform() {
-    if (!isAnyKeyActive) {
+    if (voiceCount === 0) {
         ctx.fillStyle = '#1a1a1a';
         ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
         return;
@@ -296,9 +449,10 @@ function drawWaveform() {
     ctx.stroke();
 }
 
-// Initialize waveform display
+// Initialize
 ctx.fillStyle = '#1a1a1a';
 ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+createVirtualKeyboard();
 
 // Keyboard event handlers
 document.addEventListener('keydown', (event) => {
@@ -307,12 +461,26 @@ document.addEventListener('keydown', (event) => {
     
     if (note && !event.repeat) {
         startNote(key, note);
+        
+        // Highlight virtual keyboard key
+        const keyElement = document.querySelector(`.piano-key[data-note="${note}"]`);
+        if (keyElement) {
+            keyElement.classList.add('active');
+        }
     }
 });
 
 document.addEventListener('keyup', (event) => {
     const key = event.key.toLowerCase();
-    if (keyToNote[key]) {
+    const note = keyToNote[key];
+    
+    if (note) {
         stopNote(key);
+        
+        // Remove highlight from virtual keyboard
+        const keyElement = document.querySelector(`.piano-key[data-note="${note}"]`);
+        if (keyElement) {
+            keyElement.classList.remove('active');
+        }
     }
 });
