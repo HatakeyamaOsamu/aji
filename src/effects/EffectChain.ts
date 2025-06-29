@@ -56,7 +56,9 @@ export class EffectChain {
   }
 
   setReverbDampening(frequency: number): void {
-    this.reverb.dampening = frequency;
+    // Tone.js Reverb doesn't have a dampening property
+    // This method is kept for API compatibility but does nothing
+    // TODO: Consider using a different reverb effect or removing this method
   }
 
   setReverbMix(wet: number): void {
