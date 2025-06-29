@@ -3,79 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Tone.js Synthesizer</title>
+    <title>Tone Synth</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Tone Synthesizer</h1>
+        <header>
+            <h1>Tone Synth</h1>
+            <div class="visualizer">
+                <canvas id="waveform"></canvas>
+            </div>
+        </header>
         
-        <div class="visualizer">
-            <canvas id="waveform"></canvas>
-        </div>
-        
-        <div class="controls-grid">
-            <div class="control-section">
+        <div class="main-controls">
+            <section class="control-section">
                 <h2>Oscillator</h2>
                 <div class="waveform-selector">
-                    <button class="waveform-button active" data-waveform="sawtooth">Sawtooth</button>
+                    <button class="waveform-button active" data-waveform="sawtooth">Saw</button>
                     <button class="waveform-button" data-waveform="sine">Sine</button>
                     <button class="waveform-button" data-waveform="square">Square</button>
                     <button class="waveform-button" data-waveform="triangle">Triangle</button>
                 </div>
-            </div>
+            </section>
             
-            <div class="control-section">
+            <section class="control-section">
                 <h2>Envelope</h2>
-                <div class="slider-container">
-                    <div class="slider-label">
-                        <span>Attack</span>
+                <div class="envelope-controls">
+                    <div class="slider-container">
+                        <label>Attack</label>
+                        <input type="range" id="attack" min="0" max="2" step="0.01" value="0.01">
                         <span class="slider-value" id="attack-value">0.01s</span>
                     </div>
-                    <input type="range" id="attack" min="0" max="2" step="0.01" value="0.01">
-                </div>
-                
-                <div class="slider-container">
-                    <div class="slider-label">
-                        <span>Decay</span>
+                    <div class="slider-container">
+                        <label>Decay</label>
+                        <input type="range" id="decay" min="0" max="2" step="0.01" value="0.2">
                         <span class="slider-value" id="decay-value">0.2s</span>
                     </div>
-                    <input type="range" id="decay" min="0" max="2" step="0.01" value="0.2">
-                </div>
-                
-                <div class="slider-container">
-                    <div class="slider-label">
-                        <span>Sustain</span>
+                    <div class="slider-container">
+                        <label>Sustain</label>
+                        <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.5">
                         <span class="slider-value" id="sustain-value">50%</span>
                     </div>
-                    <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.5">
-                </div>
-                
-                <div class="slider-container">
-                    <div class="slider-label">
-                        <span>Release</span>
+                    <div class="slider-container">
+                        <label>Release</label>
+                        <input type="range" id="release" min="0" max="5" step="0.01" value="0.8">
                         <span class="slider-value" id="release-value">0.8s</span>
                     </div>
-                    <input type="range" id="release" min="0" max="5" step="0.01" value="0.8">
                 </div>
-            </div>
-        </div>
-        
-        <div class="control-section">
-            <h2>Master</h2>
-            <div class="slider-container">
-                <div class="slider-label">
-                    <span>Volume</span>
+            </section>
+            
+            <section class="control-section">
+                <h2>Filter</h2>
+                <div class="filter-controls">
+                    <div class="filter-type-selector">
+                        <button class="filter-type-button active" data-filter="lowpass">Low</button>
+                        <button class="filter-type-button" data-filter="highpass">High</button>
+                        <button class="filter-type-button" data-filter="bandpass">Band</button>
+                    </div>
+                    <div class="slider-container">
+                        <label>Cutoff</label>
+                        <input type="range" id="filter-cutoff" min="20" max="20000" step="1" value="2000">
+                        <span class="slider-value" id="filter-cutoff-value">2000Hz</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>Resonance</label>
+                        <input type="range" id="filter-resonance" min="0" max="30" step="0.1" value="1">
+                        <span class="slider-value" id="filter-resonance-value">1</span>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="control-section">
+                <h2>Delay</h2>
+                <div class="effect-controls">
+                    <div class="slider-container">
+                        <label>Time</label>
+                        <input type="range" id="delay-time" min="0" max="1" step="0.01" value="0.25">
+                        <span class="slider-value" id="delay-time-value">0.25s</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>Feedback</label>
+                        <input type="range" id="delay-feedback" min="0" max="0.9" step="0.01" value="0.3">
+                        <span class="slider-value" id="delay-feedback-value">30%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>Mix</label>
+                        <input type="range" id="delay-mix" min="0" max="1" step="0.01" value="0">
+                        <span class="slider-value" id="delay-mix-value">0%</span>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="control-section">
+                <h2>Reverb</h2>
+                <div class="effect-controls">
+                    <div class="slider-container">
+                        <label>Room Size</label>
+                        <input type="range" id="reverb-size" min="0" max="1" step="0.01" value="0.5">
+                        <span class="slider-value" id="reverb-size-value">50%</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>Dampening</label>
+                        <input type="range" id="reverb-dampening" min="0" max="10000" step="100" value="3000">
+                        <span class="slider-value" id="reverb-dampening-value">3000Hz</span>
+                    </div>
+                    <div class="slider-container">
+                        <label>Mix</label>
+                        <input type="range" id="reverb-mix" min="0" max="1" step="0.01" value="0">
+                        <span class="slider-value" id="reverb-mix-value">0%</span>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="control-section master-section">
+                <h2>Master</h2>
+                <div class="slider-container">
+                    <label>Volume</label>
+                    <input type="range" id="volume" min="0" max="100" step="1" value="75">
                     <span class="slider-value" id="volume-value">75%</span>
                 </div>
-                <input type="range" id="volume" min="0" max="100" step="1" value="75">
-            </div>
+            </section>
         </div>
         
-        <p class="instructions">
-            Use your keyboard to play: <span class="keyboard-hint">Z-M</span> and <span class="keyboard-hint">Q-I</span> for notes<br>
-            Black keys: <span class="keyboard-hint">S,D,G,H,J</span> and <span class="keyboard-hint">2,3,5,6,7</span>
-        </p>
+        <footer class="instructions">
+            <p>Play with keyboard: <span class="keyboard-hint">Z-M</span> and <span class="keyboard-hint">Q-I</span> • Black keys: <span class="keyboard-hint">S,D,G,H,J</span> and <span class="keyboard-hint">2,3,5,6,7</span></p>
+        </footer>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
