@@ -13,8 +13,10 @@ let synthOptions = {
 
 // Polyphonic voice management
 const MAX_VOICES = 8;
-let activeVoices = new Map(); // Map<noteKey, voice>
+let voicePool = []; // Pre-allocated voice pool
+let activeVoices = new Map(); // Map<noteKey, voiceIndex>
 let voiceCount = 0;
+let isAudioInitialized = false;
 
 // Audio chain components
 let masterVolume = null;
@@ -31,8 +33,12 @@ let filterSettings = {
     Q: 1
 };
 
-// Initialize audio chain
+// Initialize audio chain and voice pool
 async function initAudio() {
+    if (isAudioInitialized) return;
+    
+    await Tone.start();
+    
     // Create effects chain
     masterVolume = new Tone.Volume(-6).toDestination();
     analyser = new Tone.Analyser("waveform", 256);
@@ -71,13 +77,42 @@ async function initAudio() {
     delay.connect(reverb);
     reverb.connect(masterVolume);
     masterVolume.connect(analyser);
+    
+    // Pre-allocate voice pool
+    for (let i = 0; i < MAX_VOICES; i++) {
+        const voice = {
+            synth: new Tone.Synth(synthOptions),
+            isActive: false,
+            note: null,
+            key: null
+        };
+        voice.synth.connect(filter);
+        voicePool.push(voice);
+    }
+    
+    isAudioInitialized = true;
 }
 
-// Create a single voice
-function createVoice() {
-    const synth = new Tone.Synth(synthOptions);
-    synth.connect(filter);
-    return synth;
+// Get an available voice from the pool
+function getAvailableVoice() {
+    // First, try to find an inactive voice
+    for (let i = 0; i < voicePool.length; i++) {
+        if (!voicePool[i].isActive) {
+            return i;
+        }
+    }
+    
+    // If all voices are active, steal the oldest one
+    // In a real implementation, you might want to steal the voice with the lowest amplitude
+    // or the one that has been playing the longest
+    return 0;
+}
+
+// Update synthesizer parameters for all voices
+function updateAllVoices() {
+    voicePool.forEach(voice => {
+        voice.synth.set(synthOptions);
+    });
 }
 
 // Update voice count display
@@ -105,6 +140,7 @@ document.querySelectorAll('.waveform-button').forEach(button => {
         document.querySelectorAll('.waveform-button').forEach(b => b.classList.remove('active'));
         button.classList.add('active');
         synthOptions.oscillator.type = button.dataset.waveform;
+        updateAllVoices();
     });
 });
 
@@ -130,21 +166,25 @@ const volumeSlider = document.getElementById('volume');
 attackSlider.addEventListener('input', (e) => {
     synthOptions.envelope.attack = parseFloat(e.target.value);
     document.getElementById('attack-value').textContent = `${e.target.value}s`;
+    updateAllVoices();
 });
 
 decaySlider.addEventListener('input', (e) => {
     synthOptions.envelope.decay = parseFloat(e.target.value);
     document.getElementById('decay-value').textContent = `${e.target.value}s`;
+    updateAllVoices();
 });
 
 sustainSlider.addEventListener('input', (e) => {
     synthOptions.envelope.sustain = parseFloat(e.target.value);
     document.getElementById('sustain-value').textContent = `${Math.round(e.target.value * 100)}%`;
+    updateAllVoices();
 });
 
 releaseSlider.addEventListener('input', (e) => {
     synthOptions.envelope.release = parseFloat(e.target.value);
     document.getElementById('release-value').textContent = `${e.target.value}s`;
+    updateAllVoices();
 });
 
 volumeSlider.addEventListener('input', (e) => {
@@ -370,10 +410,9 @@ function createVirtualKeyboard() {
 
 // Start note from virtual keyboard
 async function startNoteFromVirtualKeyboard(note) {
-    if (!masterVolume) {
+    if (!isAudioInitialized) {
         await initAudio();
     }
-    await Tone.start();
     startNote(note, note);
     
     // Highlight key
@@ -386,17 +425,30 @@ async function startNoteFromVirtualKeyboard(note) {
 // Start note (polyphonic)
 async function startNote(key, note) {
     if (activeVoices.has(key)) return;
-    if (voiceCount >= MAX_VOICES) return;
     
-    if (!masterVolume) {
+    if (!isAudioInitialized) {
         await initAudio();
     }
     
-    await Tone.start();
+    const voiceIndex = getAvailableVoice();
+    const voice = voicePool[voiceIndex];
     
-    const voice = createVoice();
-    voice.triggerAttack(note);
-    activeVoices.set(key, voice);
+    // If the voice is already active, release it first
+    if (voice.isActive) {
+        voice.synth.triggerRelease();
+        if (activeVoices.has(voice.key)) {
+            activeVoices.delete(voice.key);
+            voiceCount--;
+        }
+    }
+    
+    // Activate the voice
+    voice.synth.triggerAttack(note);
+    voice.isActive = true;
+    voice.note = note;
+    voice.key = key;
+    
+    activeVoices.set(key, voiceIndex);
     voiceCount++;
     updateVoiceCount();
     
@@ -407,10 +459,11 @@ async function startNote(key, note) {
 
 // Stop note
 function stopNote(key) {
-    const voice = activeVoices.get(key);
-    if (!voice) return;
+    const voiceIndex = activeVoices.get(key);
+    if (voiceIndex === undefined) return;
     
-    voice.triggerRelease();
+    const voice = voicePool[voiceIndex];
+    voice.synth.triggerRelease();
     
     // Remove key highlight
     const keyElement = document.querySelector(`.piano-key[data-note="${key}"]`);
@@ -418,13 +471,18 @@ function stopNote(key) {
         keyElement.classList.remove('active');
     }
     
+    // Mark voice as inactive after release time
     setTimeout(() => {
-        if (activeVoices.has(key)) {
-            const v = activeVoices.get(key);
-            v.dispose();
-            activeVoices.delete(key);
-            voiceCount--;
-            updateVoiceCount();
+        if (voice.key === key) {
+            voice.isActive = false;
+            voice.note = null;
+            voice.key = null;
+            
+            if (activeVoices.has(key)) {
+                activeVoices.delete(key);
+                voiceCount--;
+                updateVoiceCount();
+            }
         }
     }, synthOptions.envelope.release * 1000 + 100);
 }
@@ -464,17 +522,35 @@ function drawWaveform() {
     ctx.stroke();
 }
 
-// Initialize
+// Initialize on first user interaction
+async function initializeOnFirstInteraction() {
+    if (!isAudioInitialized) {
+        await initAudio();
+        // Remove this listener after initialization
+        document.removeEventListener('click', initializeOnFirstInteraction);
+        document.removeEventListener('keydown', initializeOnFirstInteraction);
+    }
+}
+
+// Add listeners for initial audio context activation
+document.addEventListener('click', initializeOnFirstInteraction);
+document.addEventListener('keydown', initializeOnFirstInteraction);
+
+// Initialize visual elements
 ctx.fillStyle = '#1a1a1a';
 ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
 createVirtualKeyboard();
 
 // Keyboard event handlers
-document.addEventListener('keydown', (event) => {
+document.addEventListener('keydown', async (event) => {
     const key = event.key.toLowerCase();
     const note = keyToNote[key];
     
     if (note && !event.repeat) {
+        if (!isAudioInitialized) {
+            await initAudio();
+        }
+        
         startNote(key, note);
         
         // Highlight virtual keyboard key
