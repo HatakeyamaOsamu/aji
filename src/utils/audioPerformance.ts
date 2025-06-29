@@ -59,8 +59,8 @@ export class AudioPerformanceMonitor {
         state: context.state,
         sampleRate: context.sampleRate,
         currentTime: context.currentTime,
-        baseLatency: context.baseLatency || 0,
-        outputLatency: context.outputLatency || 0
+        baseLatency: this.getBaseLatency(context),
+        outputLatency: this.getOutputLatency(context)
       },
       cpu: {
         memoryUsage: this.getMemoryUsage(),
@@ -72,6 +72,16 @@ export class AudioPerformanceMonitor {
         latency: this.estimateLatency()
       }
     };
+  }
+
+  private getBaseLatency(context: Tone.BaseContext): number {
+    const audioContext = context as any;
+    return audioContext.baseLatency || 0;
+  }
+
+  private getOutputLatency(context: Tone.BaseContext): number {
+    const audioContext = context as any;
+    return audioContext.outputLatency || 0;
   }
 
   private getMemoryUsage(): number {
@@ -105,7 +115,7 @@ export class AudioPerformanceMonitor {
 
   private estimateLatency(): number {
     const context = Tone.getContext();
-    return (context.baseLatency || 0) + (context.outputLatency || 0);
+    return this.getBaseLatency(context) + this.getOutputLatency(context);
   }
 }
 
@@ -135,7 +145,8 @@ export class AudioOptimizer {
   static optimizeBufferSize(): void {
     try {
       const context = Tone.getContext();
-      if (context.audioWorklet) {
+      const audioContext = context as any;
+      if (audioContext.audioWorklet) {
         // AudioWorkletが利用可能な場合の最適化
         console.log('AudioWorklet available - using optimized processing');
       }
@@ -147,10 +158,13 @@ export class AudioOptimizer {
   // レイテンシーの最適化
   static optimizeLatency(): void {
     // lookAheadの最適化
-    Tone.getTransport().lookAhead = 0.05;
+    const transport = Tone.getTransport() as any;
+    if ('lookAhead' in transport) {
+      transport.lookAhead = 0.05;
+    }
     
     // スケジューリングの最適化
-    Tone.getTransport().scheduleRepeat((time) => {
+    Tone.getTransport().scheduleRepeat(() => {
       // 何もしない（スケジューラーのウォームアップ）
     }, '32n');
   }
