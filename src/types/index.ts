@@ -43,3 +43,8 @@ export interface VirtualKeyNote {
 }
 
 export type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle';
+
+// Deep partial type for nested partial updates
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
