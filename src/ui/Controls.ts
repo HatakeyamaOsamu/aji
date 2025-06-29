@@ -1,6 +1,6 @@
 import type { SynthEngine } from '../synth/SynthEngine';
 import type { EffectController } from '../effects/EffectController';
-import type { OscillatorType } from '../types';
+import { throttle } from '../utils/performance';
 
 export class Controls {
   private synthEngine: SynthEngine;
@@ -13,142 +13,144 @@ export class Controls {
   }
 
   private initializeControls(): void {
-    this.initializeWaveformButtons();
-    this.initializeFilterButtons();
-    this.initializeEnvelopeControls();
-    this.initializeMasterControls();
-    this.initializeFilterControls();
-    this.initializeChorusControls();
-    this.initializeDelayControls();
-    this.initializeReverbControls();
+    this.initWaveformButtons();
+    this.initEnvelopeControls();
+    this.initFilterControls();
+    this.initEffectControls();
+    this.initMasterControls();
   }
 
-  private initializeWaveformButtons(): void {
-    document.querySelectorAll('.waveform-button').forEach(button => {
-      button.addEventListener('click', () => {
-        document.querySelectorAll('.waveform-button').forEach(b => b.classList.remove('active'));
-        button.classList.add('active');
-        const waveform = (button as HTMLElement).dataset.waveform as OscillatorType;
-        this.synthEngine.setSynthOptions({ oscillator: { type: waveform } });
+  private initWaveformButtons(): void {
+    const buttons = document.querySelectorAll('.waveform-button');
+    buttons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const waveform = target.dataset.waveform as any;
+        
+        buttons.forEach(btn => btn.classList.remove('active'));
+        target.classList.add('active');
+        
+        this.synthEngine.setSynthOptions({
+          oscillator: { type: waveform }
+        });
       });
     });
   }
 
-  private initializeFilterButtons(): void {
-    document.querySelectorAll('.filter-type-button').forEach(button => {
-      button.addEventListener('click', () => {
-        document.querySelectorAll('.filter-type-button').forEach(b => b.classList.remove('active'));
-        button.classList.add('active');
-        const filterType = (button as HTMLElement).dataset.filter as BiquadFilterType;
-        this.effectController.setFilterType(filterType);
-      });
-    });
-  }
+  private initEnvelopeControls(): void {
+    const controls = [
+      { id: 'attack', property: 'attack', min: 0, max: 2, display: (v: number) => `${v}s` },
+      { id: 'decay', property: 'decay', min: 0, max: 2, display: (v: number) => `${v}s` },
+      { id: 'sustain', property: 'sustain', min: 0, max: 1, display: (v: number) => `${Math.round(v * 100)}%` },
+      { id: 'release', property: 'release', min: 0, max: 5, display: (v: number) => `${v}s` }
+    ];
 
-  private initializeEnvelopeControls(): void {
-    this.setupSlider('attack', (value) => {
-      this.synthEngine.setSynthOptions({ envelope: { attack: value } });
-      return `${value}s`;
-    });
-
-    this.setupSlider('decay', (value) => {
-      this.synthEngine.setSynthOptions({ envelope: { decay: value } });
-      return `${value}s`;
-    });
-
-    this.setupSlider('sustain', (value) => {
-      this.synthEngine.setSynthOptions({ envelope: { sustain: value } });
-      return `${Math.round(value * 100)}%`;
-    });
-
-    this.setupSlider('release', (value) => {
-      this.synthEngine.setSynthOptions({ envelope: { release: value } });
-      return `${value}s`;
-    });
-  }
-
-  private initializeMasterControls(): void {
-    this.setupSlider('volume', (value) => {
-      this.effectController.setMasterVolume(value);
-      return `${value}%`;
-    });
-  }
-
-  private initializeFilterControls(): void {
-    this.setupSlider('filter-cutoff', (value) => {
-      this.effectController.setFilterFrequency(value);
-      return `${Math.round(value)}Hz`;
-    });
-
-    this.setupSlider('filter-resonance', (value) => {
-      this.effectController.setFilterResonance(value);
-      return value.toString();
-    });
-  }
-
-  private initializeChorusControls(): void {
-    this.setupSlider('chorus-frequency', (value) => {
-      this.effectController.setChorusFrequency(value);
-      return `${value}Hz`;
-    });
-
-    this.setupSlider('chorus-depth', (value) => {
-      this.effectController.setChorusDepth(value);
-      return `${Math.round(value * 100)}%`;
-    });
-
-    this.setupSlider('chorus-mix', (value) => {
-      this.effectController.setChorusMix(value);
-      return `${Math.round(value * 100)}%`;
-    });
-  }
-
-  private initializeDelayControls(): void {
-    this.setupSlider('delay-time', (value) => {
-      this.effectController.setDelayTime(value);
-      return `${value}s`;
-    });
-
-    this.setupSlider('delay-feedback', (value) => {
-      this.effectController.setDelayFeedback(value);
-      return `${Math.round(value * 100)}%`;
-    });
-
-    this.setupSlider('delay-mix', (value) => {
-      this.effectController.setDelayMix(value);
-      return `${Math.round(value * 100)}%`;
-    });
-  }
-
-  private initializeReverbControls(): void {
-    this.setupSlider('reverb-size', (value) => {
-      this.effectController.setReverbSize(value);
-      return `${Math.round(value * 100)}%`;
-    });
-
-    this.setupSlider('reverb-dampening', (value) => {
-      this.effectController.setReverbDampening(value);
-      return `${Math.round(value)}Hz`;
-    });
-
-    this.setupSlider('reverb-mix', (value) => {
-      this.effectController.setReverbMix(value);
-      return `${Math.round(value * 100)}%`;
-    });
-  }
-
-  private setupSlider(
-    id: string,
-    onChange: (value: number) => string
-  ): void {
-    const slider = document.getElementById(id) as HTMLInputElement;
-    const valueDisplay = document.getElementById(`${id}-value`);
-    
-    if (slider && valueDisplay) {
+    controls.forEach(({ id, property, display }) => {
+      const slider = document.getElementById(id) as HTMLInputElement;
+      const valueDisplay = document.getElementById(`${id}-value`) as HTMLElement;
+      
+      // Throttle slider updates for better performance
+      const updateValue = throttle((value: number) => {
+        valueDisplay.textContent = display(value);
+        this.synthEngine.setSynthOptions({
+          envelope: { [property]: value }
+        });
+      }, 16); // ~60fps
+      
       slider.addEventListener('input', (e) => {
         const value = parseFloat((e.target as HTMLInputElement).value);
-        valueDisplay.textContent = onChange(value);
+        updateValue(value);
       });
-    }
+    });
+  }
+
+  private initFilterControls(): void {
+    // Filter type buttons
+    const filterButtons = document.querySelectorAll('.filter-type-button');
+    filterButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const filterType = target.dataset.filter as any;
+        
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        target.classList.add('active');
+        
+        this.synthEngine.setFilterSettings({ type: filterType });
+      });
+    });
+
+    // Filter sliders with throttling
+    const cutoffSlider = document.getElementById('filter-cutoff') as HTMLInputElement;
+    const cutoffDisplay = document.getElementById('filter-cutoff-value') as HTMLElement;
+    
+    const updateCutoff = throttle((value: number) => {
+      cutoffDisplay.textContent = `${value}Hz`;
+      this.synthEngine.setFilterSettings({ frequency: value });
+    }, 16);
+    
+    cutoffSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value);
+      updateCutoff(value);
+    });
+
+    const resonanceSlider = document.getElementById('filter-resonance') as HTMLInputElement;
+    const resonanceDisplay = document.getElementById('filter-resonance-value') as HTMLElement;
+    
+    const updateResonance = throttle((value: number) => {
+      resonanceDisplay.textContent = value.toFixed(1);
+      this.synthEngine.setFilterSettings({ Q: value });
+    }, 16);
+    
+    resonanceSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value);
+      updateResonance(value);
+    });
+  }
+
+  private initEffectControls(): void {
+    const effectControls = [
+      // Chorus
+      { id: 'chorus-frequency', setter: 'setChorusFrequency', display: (v: number) => `${v.toFixed(1)}Hz` },
+      { id: 'chorus-depth', setter: 'setChorusDepth', display: (v: number) => `${Math.round(v * 100)}%` },
+      { id: 'chorus-mix', setter: 'setChorusMix', display: (v: number) => `${Math.round(v * 100)}%` },
+      // Delay
+      { id: 'delay-time', setter: 'setDelayTime', display: (v: number) => `${v.toFixed(2)}s` },
+      { id: 'delay-feedback', setter: 'setDelayFeedback', display: (v: number) => `${Math.round(v * 100)}%` },
+      { id: 'delay-mix', setter: 'setDelayMix', display: (v: number) => `${Math.round(v * 100)}%` },
+      // Reverb
+      { id: 'reverb-size', setter: 'setReverbSize', display: (v: number) => `${Math.round(v * 100)}%` },
+      { id: 'reverb-dampening', setter: 'setReverbDampening', display: (v: number) => `${v}Hz` },
+      { id: 'reverb-mix', setter: 'setReverbMix', display: (v: number) => `${Math.round(v * 100)}%` }
+    ];
+
+    effectControls.forEach(({ id, setter, display }) => {
+      const slider = document.getElementById(id) as HTMLInputElement;
+      const valueDisplay = document.getElementById(`${id}-value`) as HTMLElement;
+      
+      const updateValue = throttle((value: number) => {
+        valueDisplay.textContent = display(value);
+        (this.effectController as any)[setter](value);
+      }, 16);
+      
+      slider.addEventListener('input', (e) => {
+        const value = parseFloat((e.target as HTMLInputElement).value);
+        updateValue(value);
+      });
+    });
+  }
+
+  private initMasterControls(): void {
+    const volumeSlider = document.getElementById('volume') as HTMLInputElement;
+    const volumeDisplay = document.getElementById('volume-value') as HTMLElement;
+    
+    const updateVolume = throttle((value: number) => {
+      volumeDisplay.textContent = `${value}%`;
+      this.effectController.setMasterVolume(value);
+    }, 16);
+    
+    volumeSlider.addEventListener('input', (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value);
+      updateVolume(value);
+    });
   }
 }
