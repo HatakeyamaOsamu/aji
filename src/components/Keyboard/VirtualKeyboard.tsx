@@ -89,7 +89,7 @@ export const VirtualKeyboard: React.FC = () => {
 
   // Find keyboard key for note
   const getKeyboardKey = (note: string): string | undefined => {
-    return Object.entries(KEYBOARD_MAP).find(([key, n]) => n === note)?.[0];
+    return Object.entries(KEYBOARD_MAP).find(([_key, n]) => n === note)?.[0];
   };
 
   return (
