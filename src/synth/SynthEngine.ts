@@ -10,6 +10,7 @@ export class SynthEngine {
   private effectChain: EffectChain | null = null;
   private onVoiceCountChange?: (count: number) => void;
   private releaseTimeouts: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  private isAudioStarted: boolean = false;
 
   constructor() {
     this.voicePool = new VoicePool(MAX_VOICES, this.synthOptions);
@@ -66,6 +67,13 @@ export class SynthEngine {
     };
   }
 
+  private async ensureAudioStarted(): Promise<void> {
+    if (!this.isAudioStarted) {
+      await Tone.start();
+      this.isAudioStarted = true;
+    }
+  }
+
   setVoiceCountCallback(callback: (count: number) => void): void {
     this.onVoiceCountChange = callback;
   }
@@ -109,7 +117,8 @@ export class SynthEngine {
       await this.initAudio();
     }
     
-    await Tone.start();
+    // Only start audio context once
+    await this.ensureAudioStarted();
     
     const voice = this.voicePool.acquire(key, note);
     if (!voice) return; // No available voices or key already active

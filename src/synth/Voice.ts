@@ -2,7 +2,7 @@ import * as Tone from 'tone';
 import type { SynthOptions } from '../types';
 
 export class Voice {
-  private synth: Tone.PolySynth;
+  private synth: Tone.Synth;
   private key: string;
   private note: string;
   private isActive: boolean = false;
@@ -10,7 +10,8 @@ export class Voice {
   constructor(key: string, note: string, options: SynthOptions) {
     this.key = key;
     this.note = note;
-    this.synth = new Tone.PolySynth(Tone.Synth, {
+    // Use single Synth instead of PolySynth for better performance
+    this.synth = new Tone.Synth({
       oscillator: options.oscillator,
       envelope: options.envelope
     });
@@ -30,13 +31,14 @@ export class Voice {
   }
 
   triggerRelease(): void {
-    this.synth.triggerRelease(this.note, Tone.now());
+    this.synth.triggerRelease(Tone.now());
     this.isActive = false;
   }
 
   reconfigure(key: string, note: string, options: SynthOptions): void {
     this.key = key;
     this.note = note;
+    // Only update options if they've changed
     this.updateOptions(options);
   }
 
@@ -49,7 +51,7 @@ export class Voice {
 
   reset(): void {
     if (this.isActive) {
-      this.synth.releaseAll();
+      this.synth.triggerRelease(Tone.now());
     }
     this.isActive = false;
   }
@@ -60,5 +62,13 @@ export class Voice {
 
   getKey(): string {
     return this.key;
+  }
+
+  getNote(): string {
+    return this.note;
+  }
+
+  getIsActive(): boolean {
+    return this.isActive;
   }
 }
