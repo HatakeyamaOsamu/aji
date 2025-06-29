@@ -6,8 +6,8 @@ import { MAX_VOICES, DEFAULT_SYNTH_OPTIONS, DEFAULT_FILTER_SETTINGS } from '../u
 export class SynthEngine {
   private activeVoices: Map<string, Voice> = new Map();
   private voiceCount = 0;
-  private synthOptions: SynthOptions = DEFAULT_SYNTH_OPTIONS;
-  private filterSettings: FilterSettings = DEFAULT_FILTER_SETTINGS;
+  private synthOptions: SynthOptions = { ...DEFAULT_SYNTH_OPTIONS };
+  private filterSettings: FilterSettings = { ...DEFAULT_FILTER_SETTINGS };
   private effectChain: EffectChain | null = null;
   private onVoiceCountChange?: (count: number) => void;
 
@@ -70,7 +70,12 @@ export class SynthEngine {
   }
 
   setSynthOptions(options: Partial<SynthOptions>): void {
-    this.synthOptions = { ...this.synthOptions, ...options };
+    if (options.oscillator) {
+      this.synthOptions.oscillator = { ...this.synthOptions.oscillator, ...options.oscillator };
+    }
+    if (options.envelope) {
+      this.synthOptions.envelope = { ...this.synthOptions.envelope, ...options.envelope };
+    }
   }
 
   setFilterSettings(settings: Partial<FilterSettings>): void {
