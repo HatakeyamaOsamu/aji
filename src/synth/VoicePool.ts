@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import { Voice } from './Voice';
-import type { SynthOptions, Voice as VoiceType } from '../types';
+import type { SynthOptions } from '../types';
 
 interface VoiceState {
   voice: Voice;
