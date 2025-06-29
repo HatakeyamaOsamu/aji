@@ -33,12 +33,15 @@
             color: #333;
         }
 
-        .piano {
-            position: relative;
+        .piano-wrapper {
             display: flex;
             justify-content: center;
             margin-bottom: 40px;
-            height: 120px;
+        }
+
+        .piano {
+            position: relative;
+            display: inline-block;
         }
 
         .white-keys {
@@ -80,17 +83,17 @@
             transform: translateY(2px);
         }
 
-        /* Black key positions */
-        .black-key[data-key="s"] { left: 26px; }
-        .black-key[data-key="d"] { left: 68px; }
-        .black-key[data-key="g"] { left: 152px; }
-        .black-key[data-key="h"] { left: 194px; }
-        .black-key[data-key="j"] { left: 236px; }
-        .black-key[data-key="2"] { left: 320px; }
-        .black-key[data-key="3"] { left: 362px; }
-        .black-key[data-key="5"] { left: 446px; }
-        .black-key[data-key="6"] { left: 488px; }
-        .black-key[data-key="7"] { left: 530px; }
+        /* Black key positions - 計算し直した正確な位置 */
+        .black-key[data-key="s"] { left: 26px; }  /* C# - between C and D */
+        .black-key[data-key="d"] { left: 68px; }  /* D# - between D and E */
+        .black-key[data-key="g"] { left: 152px; } /* F# - between F and G */
+        .black-key[data-key="h"] { left: 194px; } /* G# - between G and A */
+        .black-key[data-key="j"] { left: 236px; } /* A# - between A and B */
+        .black-key[data-key="2"] { left: 320px; } /* C# - between C and D (octave 2) */
+        .black-key[data-key="3"] { left: 362px; } /* D# - between D and E (octave 2) */
+        .black-key[data-key="5"] { left: 446px; } /* F# - between F and G (octave 2) */
+        .black-key[data-key="6"] { left: 488px; } /* G# - between G and A (octave 2) */
+        .black-key[data-key="7"] { left: 530px; } /* A# - between A and B (octave 2) */
 
         canvas {
             width: 100%;
@@ -112,38 +115,40 @@
     <div class="container">
         <h1>Simple Tone.js Synthesizer</h1>
         
-        <div class="piano">
-            <div class="white-keys">
-                <!-- Octave 1 -->
-                <div class="key white-key" data-key="z" data-note="C3"></div>
-                <div class="key white-key" data-key="x" data-note="D3"></div>
-                <div class="key white-key" data-key="c" data-note="E3"></div>
-                <div class="key white-key" data-key="v" data-note="F3"></div>
-                <div class="key white-key" data-key="b" data-note="G3"></div>
-                <div class="key white-key" data-key="n" data-note="A3"></div>
-                <div class="key white-key" data-key="m" data-note="B3"></div>
-                <!-- Octave 2 -->
-                <div class="key white-key" data-key="q" data-note="C4"></div>
-                <div class="key white-key" data-key="w" data-note="D4"></div>
-                <div class="key white-key" data-key="e" data-note="E4"></div>
-                <div class="key white-key" data-key="r" data-note="F4"></div>
-                <div class="key white-key" data-key="t" data-note="G4"></div>
-                <div class="key white-key" data-key="y" data-note="A4"></div>
-                <div class="key white-key" data-key="u" data-note="B4"></div>
-                <div class="key white-key" data-key="i" data-note="C5"></div>
+        <div class="piano-wrapper">
+            <div class="piano">
+                <div class="white-keys">
+                    <!-- Octave 1 -->
+                    <div class="key white-key" data-key="z" data-note="C3"></div>
+                    <div class="key white-key" data-key="x" data-note="D3"></div>
+                    <div class="key white-key" data-key="c" data-note="E3"></div>
+                    <div class="key white-key" data-key="v" data-note="F3"></div>
+                    <div class="key white-key" data-key="b" data-note="G3"></div>
+                    <div class="key white-key" data-key="n" data-note="A3"></div>
+                    <div class="key white-key" data-key="m" data-note="B3"></div>
+                    <!-- Octave 2 -->
+                    <div class="key white-key" data-key="q" data-note="C4"></div>
+                    <div class="key white-key" data-key="w" data-note="D4"></div>
+                    <div class="key white-key" data-key="e" data-note="E4"></div>
+                    <div class="key white-key" data-key="r" data-note="F4"></div>
+                    <div class="key white-key" data-key="t" data-note="G4"></div>
+                    <div class="key white-key" data-key="y" data-note="A4"></div>
+                    <div class="key white-key" data-key="u" data-note="B4"></div>
+                    <div class="key white-key" data-key="i" data-note="C5"></div>
+                </div>
+                
+                <!-- Black keys -->
+                <div class="key black-key" data-key="s" data-note="C#3"></div>
+                <div class="key black-key" data-key="d" data-note="D#3"></div>
+                <div class="key black-key" data-key="g" data-note="F#3"></div>
+                <div class="key black-key" data-key="h" data-note="G#3"></div>
+                <div class="key black-key" data-key="j" data-note="A#3"></div>
+                <div class="key black-key" data-key="2" data-note="C#4"></div>
+                <div class="key black-key" data-key="3" data-note="D#4"></div>
+                <div class="key black-key" data-key="5" data-note="F#4"></div>
+                <div class="key black-key" data-key="6" data-note="G#4"></div>
+                <div class="key black-key" data-key="7" data-note="A#4"></div>
             </div>
-            
-            <!-- Black keys -->
-            <div class="key black-key" data-key="s" data-note="C#3"></div>
-            <div class="key black-key" data-key="d" data-note="D#3"></div>
-            <div class="key black-key" data-key="g" data-note="F#3"></div>
-            <div class="key black-key" data-key="h" data-note="G#3"></div>
-            <div class="key black-key" data-key="j" data-note="A#3"></div>
-            <div class="key black-key" data-key="2" data-note="C#4"></div>
-            <div class="key black-key" data-key="3" data-note="D#4"></div>
-            <div class="key black-key" data-key="5" data-note="F#4"></div>
-            <div class="key black-key" data-key="6" data-note="G#4"></div>
-            <div class="key black-key" data-key="7" data-note="A#4"></div>
         </div>
         
         <canvas id="waveform"></canvas>
