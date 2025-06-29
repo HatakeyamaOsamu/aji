@@ -14,8 +14,9 @@ export class VoicePool {
   }
 
   private initializePool(): void {
-    // Pre-create voices for better performance
-    for (let i = 0; i < Math.min(8, this.maxPoolSize); i++) {
+    // Pre-create all voices for better performance
+    // This prevents audio glitches from dynamic voice creation
+    for (let i = 0; i < this.maxPoolSize; i++) {
       this.pool.push(this.createVoice());
     }
   }
@@ -34,11 +35,15 @@ export class VoicePool {
     let voice = this.pool.pop();
     
     if (!voice) {
-      // Pool is empty, create new voice if under limit
-      if (this.activeVoices.size < this.maxPoolSize) {
-        voice = this.createVoice();
+      // No available voices, steal the oldest one
+      const oldestKey = this.activeVoices.keys().next().value;
+      if (oldestKey) {
+        const oldestVoice = this.activeVoices.get(oldestKey)!;
+        this.activeVoices.delete(oldestKey);
+        oldestVoice.reset();
+        voice = oldestVoice;
       } else {
-        return null; // At capacity
+        return null; // Should never happen with proper initialization
       }
     }
 
@@ -55,14 +60,9 @@ export class VoicePool {
 
     this.activeVoices.delete(key);
     
-    // Reset and return to pool if pool isn't full
-    if (this.pool.length < this.maxPoolSize) {
-      voice.reset();
-      this.pool.push(voice);
-    } else {
-      // Dispose of excess voices
-      voice.dispose();
-    }
+    // Always return to pool for reuse
+    voice.reset();
+    this.pool.push(voice);
   }
 
   getActiveVoice(key: string): Voice | undefined {
@@ -72,8 +72,12 @@ export class VoicePool {
   updateSynthOptions(synthOptions: SynthOptions): void {
     this.synthOptions = synthOptions;
     
-    // Update all pooled voices
+    // Update all voices (both pooled and active)
     this.pool.forEach(voice => {
+      voice.updateOptions(synthOptions);
+    });
+    
+    this.activeVoices.forEach(voice => {
       voice.updateOptions(synthOptions);
     });
   }
