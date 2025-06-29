@@ -81,7 +81,9 @@ export class Voice {
       this.synth.triggerRelease(now);
       
       // スムージングゲインで追加的なフェードアウト
-      this.smoothStop(now + 0.001);
+      // Time型に数値を追加するために適切な計算を行う
+      const releaseTime = Tone.Time(now).toSeconds() + 0.001;
+      this.smoothStop(releaseTime);
       
       this.isActive = false;
       
@@ -99,18 +101,20 @@ export class Voice {
 
   private smoothStart(time: Tone.Unit.Time): void {
     // ゲインを0から1へスムーズに変化
+    const timeSeconds = Tone.Time(time).toSeconds();
     this.smoothingGain.gain.cancelScheduledValues(time);
     this.smoothingGain.gain.setValueAtTime(0, time);
-    this.smoothingGain.gain.linearRampToValueAtTime(1, time + 0.005);
+    this.smoothingGain.gain.linearRampToValueAtTime(1, timeSeconds + 0.005);
   }
 
   private smoothStop(time: Tone.Unit.Time): void {
     // 現在の値から0へスムーズに変化
+    const timeSeconds = Tone.Time(time).toSeconds();
     this.smoothingGain.gain.cancelScheduledValues(time);
-    this.smoothingGain.gain.linearRampToValueAtTime(0, time + 0.01);
+    this.smoothingGain.gain.linearRampToValueAtTime(0, timeSeconds + 0.01);
     
     // 少し後に音量を復帰（次回の使用に備えて）
-    this.smoothingGain.gain.setValueAtTime(1, time + 0.02);
+    this.smoothingGain.gain.setValueAtTime(1, timeSeconds + 0.02);
   }
 
   // レガート演奏用：音程を滑らかに変更
@@ -123,7 +127,7 @@ export class Voice {
       
       // 現在の周波数から新しい周波数へスムーズに変化
       this.synth.frequency.cancelScheduledValues(now);
-      this.synth.frequency.exponentialRampToValueAtTime(newFreq, now + glideTime);
+      this.synth.frequency.exponentialRampToValueAtTime(newFreq, Tone.Time(now).toSeconds() + glideTime);
       
       this.currentNote = newNote;
 
@@ -153,7 +157,6 @@ export class Voice {
         envelope.release = Math.max(0.001, newEnv.release);
       } else {
         // アクティブな場合は段階的に更新
-        const now = Tone.now();
         envelope.attack = Math.max(0.001, newEnv.attack);
         envelope.decay = Math.max(0.001, newEnv.decay);
         envelope.sustain = Math.max(0.001, Math.min(1, newEnv.sustain));
@@ -209,8 +212,8 @@ export class Voice {
     return this.synth.frequency;
   }
 
-  // デチューン（微調整）
-  get detune(): Tone.Param<"cents"> {
+  // デチューン（微調整）- 型を修正
+  get detune(): Tone.Signal<"cents"> {
     return this.synth.detune;
   }
 
