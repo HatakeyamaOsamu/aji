@@ -48,41 +48,25 @@ export const VirtualKeyboard: React.FC = () => {
   
   // キーボードの状態を追跡するためのref
   const keyStateRef = useRef<Set<string>>(new Set());
-  const pendingStopsRef = useRef<Set<string>>(new Set());
+  const activeNotesRef = useRef<Set<string>>(new Set());
 
   const handleNoteStart = useCallback((note: string) => {
     // 既にアクティブな場合は無視
-    if (activeKeys.has(note)) return;
+    if (activeNotesRef.current.has(note)) return;
     
-    // ペンディング中の停止をキャンセル
-    if (pendingStopsRef.current.has(note)) {
-      pendingStopsRef.current.delete(note);
-      return;
-    }
-    
+    activeNotesRef.current.add(note);
     startNote(note, note);
-    setActiveKeys(prev => new Set(prev).add(note));
-  }, [startNote, activeKeys]);
+    setActiveKeys(new Set(activeNotesRef.current));
+  }, [startNote]);
 
   const handleNoteStop = useCallback((note: string) => {
     // アクティブでない場合は無視
-    if (!activeKeys.has(note)) return;
+    if (!activeNotesRef.current.has(note)) return;
     
-    // 少し遅延を入れて、急激な切り替えを防ぐ
-    pendingStopsRef.current.add(note);
-    
-    setTimeout(() => {
-      if (pendingStopsRef.current.has(note)) {
-        pendingStopsRef.current.delete(note);
-        stopNote(note);
-        setActiveKeys(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(note);
-          return newSet;
-        });
-      }
-    }, 10);
-  }, [stopNote, activeKeys]);
+    activeNotesRef.current.delete(note);
+    stopNote(note);
+    setActiveKeys(new Set(activeNotesRef.current));
+  }, [stopNote]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -112,7 +96,7 @@ export const VirtualKeyboard: React.FC = () => {
     const handleBlur = () => {
       keyStateRef.current.forEach(key => {
         const note = KEYBOARD_MAP[key];
-        if (note && activeKeys.has(note)) {
+        if (note && activeNotesRef.current.has(note)) {
           handleNoteStop(note);
         }
       });
@@ -129,9 +113,10 @@ export const VirtualKeyboard: React.FC = () => {
       window.removeEventListener('blur', handleBlur);
       
       // コンポーネントのアンマウント時にすべての音を停止
-      activeKeys.forEach(note => stopNote(note));
+      activeNotesRef.current.forEach(note => stopNote(note));
+      activeNotesRef.current.clear();
     };
-  }, [activeKeys, handleNoteStart, handleNoteStop, stopNote]);
+  }, [handleNoteStart, handleNoteStop, stopNote]);
 
   // Find keyboard key for note
   const getKeyboardKey = (note: string): string | undefined => {

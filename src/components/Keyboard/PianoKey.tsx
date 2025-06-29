@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 
 interface PianoKeyProps {
   note: string;
@@ -22,6 +22,7 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
   // 重複イベント防止用のref
   const isMouseDownRef = useRef(false);
   const isTouchActiveRef = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -31,6 +32,7 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
     if (isMouseDownRef.current) return;
     
     isMouseDownRef.current = true;
+    setIsDragging(true);
     onNoteStart(note);
   }, [note, onNoteStart]);
 
@@ -41,15 +43,32 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
     if (!isMouseDownRef.current) return;
     
     isMouseDownRef.current = false;
+    setIsDragging(false);
     onNoteStop(note);
   }, [note, onNoteStop]);
 
   const handleMouseLeave = useCallback(() => {
+    if (isMouseDownRef.current && isDragging) {
+      // ドラッグ中の場合は、マウスが離れても音を停止しない
+      // グローバルなmouseupイベントで処理される
+      return;
+    }
+    
     if (isMouseDownRef.current) {
       isMouseDownRef.current = false;
+      setIsDragging(false);
       onNoteStop(note);
     }
-  }, [note, onNoteStop]);
+  }, [note, onNoteStop, isDragging]);
+
+  const handleMouseEnter = useCallback((e: React.MouseEvent) => {
+    // 他のキーからドラッグしてきた場合の処理
+    // ただし、マウスボタンが押されていて、かつこのキーがまだアクティブでない場合のみ
+    if (e.buttons === 1 && !isMouseDownRef.current && !isActive) {
+      isMouseDownRef.current = true;
+      onNoteStart(note);
+    }
+  }, [note, onNoteStart, isActive]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.preventDefault();
@@ -72,6 +91,24 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
     onNoteStop(note);
   }, [note, onNoteStop]);
 
+  // グローバルマウスアップイベントの処理
+  React.useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isMouseDownRef.current) {
+        isMouseDownRef.current = false;
+        setIsDragging(false);
+        onNoteStop(note);
+      }
+    };
+
+    if (isDragging) {
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+      return () => {
+        window.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDragging, note, onNoteStop]);
+
   const className = `piano-key ${isBlack ? 'black-key' : 'white-key'} ${isActive ? 'active' : ''}`;
   
   return (
@@ -81,16 +118,9 @@ export const PianoKey: React.FC<PianoKeyProps> = ({
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onMouseEnter={handleMouseEnter}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      // グローバルイベントリスナーの追加
-      onMouseEnter={(e) => {
-        // 他のキーからドラッグしてきた場合の処理
-        if (e.buttons === 1 && !isMouseDownRef.current) {
-          isMouseDownRef.current = true;
-          onNoteStart(note);
-        }
-      }}
     >
       {keyboardKey && <span className="key-label">{keyboardKey.toUpperCase()}</span>}
     </div>
