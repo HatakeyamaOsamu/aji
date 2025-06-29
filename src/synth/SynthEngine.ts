@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import { Voice } from './Voice';
-import type { SynthOptions, EffectChain, FilterSettings } from '../types';
+import type { SynthOptions, EffectChain, FilterSettings, DeepPartial } from '../types';
 import { MAX_VOICES, DEFAULT_SYNTH_OPTIONS, DEFAULT_FILTER_SETTINGS } from '../utils/constants';
 
 export class SynthEngine {
@@ -69,7 +69,7 @@ export class SynthEngine {
     this.onVoiceCountChange = callback;
   }
 
-  setSynthOptions(options: Partial<SynthOptions>): void {
+  setSynthOptions(options: DeepPartial<SynthOptions>): void {
     if (options.oscillator) {
       this.synthOptions.oscillator = { ...this.synthOptions.oscillator, ...options.oscillator };
     }
