@@ -5,166 +5,264 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Tone.js Synthesizer</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
-            padding: 40px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #f5f5f5;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            background-color: #f8f8f8;
+            color: #1d1d1f;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             min-height: 100vh;
+            line-height: 1.5;
         }
 
         .container {
             background-color: white;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
             width: 100%;
-            max-width: 900px;
+            max-width: 720px;
         }
 
         h1 {
-            margin: 0 0 30px 0;
-            font-size: 24px;
+            margin: 0 0 48px 0;
+            font-size: 32px;
             font-weight: 600;
             text-align: center;
-            color: #333;
+            letter-spacing: -0.02em;
         }
 
-        .piano-wrapper {
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 48px;
+        }
+
+        .control-section {
+            background-color: #fafafa;
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .control-section h2 {
+            margin: 0 0 20px 0;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6e6e73;
+        }
+
+        .waveform-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .waveform-button {
+            padding: 12px 20px;
+            border: 2px solid #e5e5e7;
+            border-radius: 12px;
+            background-color: white;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .waveform-button:hover {
+            border-color: #0071e3;
+            background-color: #f5f5f7;
+        }
+
+        .waveform-button.active {
+            background-color: #0071e3;
+            color: white;
+            border-color: #0071e3;
+        }
+
+        .slider-container {
+            margin-bottom: 24px;
+        }
+
+        .slider-container:last-child {
+            margin-bottom: 0;
+        }
+
+        .slider-label {
             display: flex;
-            justify-content: center;
-            margin-bottom: 40px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
 
-        .piano {
-            position: relative;
-            display: inline-block;
+        .slider-label span {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1d1d1f;
         }
 
-        .white-keys {
-            display: flex;
-            gap: 2px;
+        .slider-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #0071e3;
+            min-width: 60px;
+            text-align: right;
         }
 
-        .key {
-            border-radius: 0 0 4px 4px;
-            transition: all 0.1s;
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: #e5e5e7;
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
             cursor: pointer;
         }
 
-        .white-key {
-            width: 40px;
-            height: 120px;
-            background-color: white;
-            border: 1px solid #ddd;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 2px solid #0071e3;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 0 8px rgba(0, 113, 227, 0.1);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 2px solid #0071e3;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .visualizer {
+            background-color: #1d1d1f;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 32px;
             position: relative;
+            overflow: hidden;
         }
-
-        .white-key.active {
-            background-color: #e0e0e0;
-            transform: translateY(2px);
-        }
-
-        .black-key {
-            width: 28px;
-            height: 70px;
-            background-color: #333;
-            border: 1px solid #000;
-            position: absolute;
-            top: 0;
-            z-index: 2;
-        }
-
-        .black-key.active {
-            background-color: #666;
-            transform: translateY(2px);
-        }
-
-        /* Black key positions - 精密に計算した位置 */
-        /* 白鍵の幅: 40px, 隙間: 2px, 黒鍵の幅: 28px */
-        /* 黒鍵は白鍵の境界の中央に配置 */
-        .black-key[data-key="s"] { left: 27px; }   /* C# - (40 + 1 - 14) = 27px */
-        .black-key[data-key="d"] { left: 69px; }   /* D# - (82 + 1 - 14) = 69px */
-        .black-key[data-key="g"] { left: 153px; }  /* F# - (166 + 1 - 14) = 153px */
-        .black-key[data-key="h"] { left: 195px; }  /* G# - (208 + 1 - 14) = 195px */
-        .black-key[data-key="j"] { left: 237px; }  /* A# - (250 + 1 - 14) = 237px */
-        .black-key[data-key="2"] { left: 321px; }  /* C# - (334 + 1 - 14) = 321px */
-        .black-key[data-key="3"] { left: 363px; }  /* D# - (376 + 1 - 14) = 363px */
-        .black-key[data-key="5"] { left: 447px; }  /* F# - (460 + 1 - 14) = 447px */
-        .black-key[data-key="6"] { left: 489px; }  /* G# - (502 + 1 - 14) = 489px */
-        .black-key[data-key="7"] { left: 531px; }  /* A# - (544 + 1 - 14) = 531px */
 
         canvas {
             width: 100%;
-            height: 200px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
+            height: 160px;
+            display: block;
         }
 
         .instructions {
             text-align: center;
-            color: #666;
+            color: #6e6e73;
             font-size: 14px;
-            margin-top: 20px;
+            margin-top: 32px;
+        }
+
+        .keyboard-hint {
+            display: inline-block;
+            padding: 4px 8px;
+            background-color: #f5f5f7;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 0 2px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Simple Tone.js Synthesizer</h1>
+        <h1>Tone Synthesizer</h1>
         
-        <div class="piano-wrapper">
-            <div class="piano">
-                <div class="white-keys">
-                    <!-- Octave 1 -->
-                    <div class="key white-key" data-key="z" data-note="C3"></div>
-                    <div class="key white-key" data-key="x" data-note="D3"></div>
-                    <div class="key white-key" data-key="c" data-note="E3"></div>
-                    <div class="key white-key" data-key="v" data-note="F3"></div>
-                    <div class="key white-key" data-key="b" data-note="G3"></div>
-                    <div class="key white-key" data-key="n" data-note="A3"></div>
-                    <div class="key white-key" data-key="m" data-note="B3"></div>
-                    <!-- Octave 2 -->
-                    <div class="key white-key" data-key="q" data-note="C4"></div>
-                    <div class="key white-key" data-key="w" data-note="D4"></div>
-                    <div class="key white-key" data-key="e" data-note="E4"></div>
-                    <div class="key white-key" data-key="r" data-note="F4"></div>
-                    <div class="key white-key" data-key="t" data-note="G4"></div>
-                    <div class="key white-key" data-key="y" data-note="A4"></div>
-                    <div class="key white-key" data-key="u" data-note="B4"></div>
-                    <div class="key white-key" data-key="i" data-note="C5"></div>
+        <div class="visualizer">
+            <canvas id="waveform"></canvas>
+        </div>
+        
+        <div class="controls-grid">
+            <div class="control-section">
+                <h2>Oscillator</h2>
+                <div class="waveform-selector">
+                    <button class="waveform-button active" data-waveform="sawtooth">Sawtooth</button>
+                    <button class="waveform-button" data-waveform="sine">Sine</button>
+                    <button class="waveform-button" data-waveform="square">Square</button>
+                    <button class="waveform-button" data-waveform="triangle">Triangle</button>
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <h2>Envelope</h2>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Attack</span>
+                        <span class="slider-value" id="attack-value">0.01s</span>
+                    </div>
+                    <input type="range" id="attack" min="0" max="2" step="0.01" value="0.01">
                 </div>
                 
-                <!-- Black keys -->
-                <div class="key black-key" data-key="s" data-note="C#3"></div>
-                <div class="key black-key" data-key="d" data-note="D#3"></div>
-                <div class="key black-key" data-key="g" data-note="F#3"></div>
-                <div class="key black-key" data-key="h" data-note="G#3"></div>
-                <div class="key black-key" data-key="j" data-note="A#3"></div>
-                <div class="key black-key" data-key="2" data-note="C#4"></div>
-                <div class="key black-key" data-key="3" data-note="D#4"></div>
-                <div class="key black-key" data-key="5" data-note="F#4"></div>
-                <div class="key black-key" data-key="6" data-note="G#4"></div>
-                <div class="key black-key" data-key="7" data-note="A#4"></div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Decay</span>
+                        <span class="slider-value" id="decay-value">0.2s</span>
+                    </div>
+                    <input type="range" id="decay" min="0" max="2" step="0.01" value="0.2">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Sustain</span>
+                        <span class="slider-value" id="sustain-value">50%</span>
+                    </div>
+                    <input type="range" id="sustain" min="0" max="1" step="0.01" value="0.5">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Release</span>
+                        <span class="slider-value" id="release-value">0.8s</span>
+                    </div>
+                    <input type="range" id="release" min="0" max="5" step="0.01" value="0.8">
+                </div>
             </div>
         </div>
         
-        <canvas id="waveform"></canvas>
+        <div class="control-section">
+            <h2>Master</h2>
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Volume</span>
+                    <span class="slider-value" id="volume-value">75%</span>
+                </div>
+                <input type="range" id="volume" min="0" max="100" step="1" value="75">
+            </div>
+        </div>
         
         <p class="instructions">
-            Lower octave: Z-M (white keys), S,D,G,H,J (black keys)<br>
-            Upper octave: Q-I (white keys), 2,3,5,6,7 (black keys)
+            Use your keyboard to play: <span class="keyboard-hint">Z-M</span> and <span class="keyboard-hint">Q-I</span> for notes<br>
+            Black keys: <span class="keyboard-hint">S,D,G,H,J</span> and <span class="keyboard-hint">2,3,5,6,7</span>
         </p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <script>
-        // Synthesizer setup
-        const synthOptions = {
+        // Initial synthesizer settings
+        let synthOptions = {
             oscillator: {
                 type: "sawtooth"
             },
@@ -173,20 +271,25 @@
                 decay: 0.2,
                 sustain: 0.5,
                 release: 0.8
-            },
-            volume: -6
+            }
         };
         
-        // Active synths
+        // Audio chain
         const synths = {};
+        let masterVolume = null;
         let analyser = null;
-        let volume = null;
         let isAnyKeyActive = false;
+        
+        // Initialize audio chain
+        async function initAudio() {
+            masterVolume = new Tone.Volume(-6).toDestination();
+            analyser = new Tone.Analyser("waveform", 256);
+            masterVolume.connect(analyser);
+        }
         
         // Get DOM elements
         const canvas = document.getElementById('waveform');
         const ctx = canvas.getContext('2d');
-        const keys = document.querySelectorAll('.key');
         
         // Set canvas size
         function resizeCanvas() {
@@ -198,34 +301,78 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         
-        // Initialize audio chain
-        async function initAudio() {
-            volume = new Tone.Volume(-6);
-            analyser = new Tone.Analyser("waveform", 256);
-            volume.connect(analyser);
-            analyser.toDestination();
-        }
+        // Waveform selector
+        document.querySelectorAll('.waveform-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.waveform-button').forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                synthOptions.oscillator.type = button.dataset.waveform;
+            });
+        });
+        
+        // ADSR controls
+        const attackSlider = document.getElementById('attack');
+        const decaySlider = document.getElementById('decay');
+        const sustainSlider = document.getElementById('sustain');
+        const releaseSlider = document.getElementById('release');
+        const volumeSlider = document.getElementById('volume');
+        
+        attackSlider.addEventListener('input', (e) => {
+            synthOptions.envelope.attack = parseFloat(e.target.value);
+            document.getElementById('attack-value').textContent = `${e.target.value}s`;
+        });
+        
+        decaySlider.addEventListener('input', (e) => {
+            synthOptions.envelope.decay = parseFloat(e.target.value);
+            document.getElementById('decay-value').textContent = `${e.target.value}s`;
+        });
+        
+        sustainSlider.addEventListener('input', (e) => {
+            synthOptions.envelope.sustain = parseFloat(e.target.value);
+            document.getElementById('sustain-value').textContent = `${Math.round(e.target.value * 100)}%`;
+        });
+        
+        releaseSlider.addEventListener('input', (e) => {
+            synthOptions.envelope.release = parseFloat(e.target.value);
+            document.getElementById('release-value').textContent = `${e.target.value}s`;
+        });
+        
+        volumeSlider.addEventListener('input', (e) => {
+            const volumePercent = parseInt(e.target.value);
+            document.getElementById('volume-value').textContent = `${volumePercent}%`;
+            if (masterVolume) {
+                // Convert percentage to dB (0% = -60dB, 100% = 0dB)
+                const volumeDb = (volumePercent / 100) * 60 - 60;
+                masterVolume.volume.value = volumeDb;
+            }
+        });
+        
+        // Key mapping
+        const keyToNote = {
+            // Lower octave
+            'z': 'C3', 's': 'C#3', 'x': 'D3', 'd': 'D#3', 'c': 'E3',
+            'v': 'F3', 'g': 'F#3', 'b': 'G3', 'h': 'G#3', 'n': 'A3',
+            'j': 'A#3', 'm': 'B3',
+            // Upper octave
+            'q': 'C4', '2': 'C#4', 'w': 'D4', '3': 'D#4', 'e': 'E4',
+            'r': 'F4', '5': 'F#4', 't': 'G4', '6': 'G#4', 'y': 'A4',
+            '7': 'A#4', 'u': 'B4', 'i': 'C5'
+        };
         
         // Start note
         async function startNote(key, note) {
-            if (synths[key]) return; // Already playing
+            if (synths[key]) return;
             
-            if (!analyser) {
+            if (!masterVolume) {
                 await initAudio();
             }
             
             await Tone.start();
             
             const synth = new Tone.Synth(synthOptions);
-            synth.connect(volume);
+            synth.connect(masterVolume);
             synth.triggerAttack(note);
             synths[key] = synth;
-            
-            // Update UI
-            const keyElement = document.querySelector(`[data-key="${key}"]`);
-            if (keyElement) {
-                keyElement.classList.add('active');
-            }
             
             if (!isAnyKeyActive) {
                 isAnyKeyActive = true;
@@ -239,19 +386,12 @@
             
             synths[key].triggerRelease();
             
-            // Clean up after release time
             setTimeout(() => {
                 if (synths[key]) {
                     synths[key].dispose();
                     delete synths[key];
                 }
             }, synthOptions.envelope.release * 1000 + 100);
-            
-            // Update UI
-            const keyElement = document.querySelector(`[data-key="${key}"]`);
-            if (keyElement) {
-                keyElement.classList.remove('active');
-            }
             
             setTimeout(() => {
                 if (Object.keys(synths).length === 0) {
@@ -263,7 +403,8 @@
         // Draw waveform
         function drawWaveform() {
             if (!isAnyKeyActive) {
-                ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+                ctx.fillStyle = '#1d1d1f';
+                ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
                 return;
             }
             
@@ -273,9 +414,11 @@
             const height = canvas.height / window.devicePixelRatio;
             const values = analyser.getValue();
             
-            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = '#1d1d1f';
+            ctx.fillRect(0, 0, width, height);
+            
             ctx.beginPath();
-            ctx.strokeStyle = '#007AFF';
+            ctx.strokeStyle = '#0071e3';
             ctx.lineWidth = 2;
             
             for (let i = 0; i < values.length; i++) {
@@ -292,43 +435,25 @@
             ctx.stroke();
         }
         
+        // Initialize waveform display
+        ctx.fillStyle = '#1d1d1f';
+        ctx.fillRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+        
         // Keyboard event handlers
         document.addEventListener('keydown', (event) => {
             const key = event.key.toLowerCase();
-            const keyElement = document.querySelector(`[data-key="${key}"]`);
+            const note = keyToNote[key];
             
-            if (keyElement && !event.repeat) {
-                const note = keyElement.dataset.note;
+            if (note && !event.repeat) {
                 startNote(key, note);
             }
         });
         
         document.addEventListener('keyup', (event) => {
             const key = event.key.toLowerCase();
-            const keyElement = document.querySelector(`[data-key="${key}"]`);
-            
-            if (keyElement) {
+            if (keyToNote[key]) {
                 stopNote(key);
             }
-        });
-        
-        // Mouse/touch support
-        keys.forEach(keyElement => {
-            keyElement.addEventListener('mousedown', () => {
-                const key = keyElement.dataset.key;
-                const note = keyElement.dataset.note;
-                startNote(key, note);
-            });
-            
-            keyElement.addEventListener('mouseup', () => {
-                const key = keyElement.dataset.key;
-                stopNote(key);
-            });
-            
-            keyElement.addEventListener('mouseleave', () => {
-                const key = keyElement.dataset.key;
-                stopNote(key);
-            });
         });
     </script>
 </body>
