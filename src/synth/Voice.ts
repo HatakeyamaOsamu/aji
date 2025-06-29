@@ -64,6 +64,10 @@ export class Voice {
     return this.key;
   }
 
+  getNote(): string {
+    return this.note;
+  }
+
   getIsActive(): boolean {
     return this.isActive;
   }
