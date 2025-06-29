@@ -87,10 +87,9 @@ export class SynthEngine {
       antiAliasFilter
     };
 
-    // エフェクトの準備完了を待つ
+    // エフェクトの準備完了を待つ（reverb のみready プロパティを持つ）
     await Promise.all([
       reverb.ready,
-      delay.ready,
       chorus.start()
     ]);
   }
@@ -105,11 +104,16 @@ export class SynthEngine {
     const context = Tone.getContext();
     
     // look-ahead時間を短縮してレスポンスを向上
-    Tone.getTransport().lookAhead = 0.05;
+    // 型安全な方法でlookAheadを設定
+    const transport = Tone.getTransport() as any;
+    if ('lookAhead' in transport) {
+      transport.lookAhead = 0.05;
+    }
     
     // バッファサイズの最適化（可能な場合）
     try {
-      if (context.audioWorklet) {
+      const audioContext = context as any;
+      if (audioContext.audioWorklet) {
         // AudioWorkletを使用可能な場合はより高品質な処理
         context.destination.channelInterpretation = 'speakers';
       }
