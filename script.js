@@ -308,6 +308,16 @@ const virtualKeyboardNotes = [
 function createVirtualKeyboard() {
     const keyboard = document.getElementById('virtual-keyboard');
     let whiteKeyIndex = 0;
+    let currentOctave = null;
+    
+    // Create a map to track the white key index for each note
+    const whiteKeyMap = new Map();
+    virtualKeyboardNotes.forEach((noteData) => {
+        if (!noteData.isBlack) {
+            whiteKeyMap.set(noteData.note, whiteKeyIndex);
+            whiteKeyIndex++;
+        }
+    });
     
     virtualKeyboardNotes.forEach((noteData, index) => {
         const key = document.createElement('div');
@@ -315,17 +325,22 @@ function createVirtualKeyboard() {
         key.dataset.note = noteData.note;
         key.dataset.key = noteData.key;
         
-        // Position black keys
+        // Position keys
         if (noteData.isBlack) {
-            const blackKeyPositions = {
-                'C#': 1, 'D#': 2, 'F#': 4, 'G#': 5, 'A#': 6
-            };
-            const noteName = noteData.note.slice(0, -1);
-            const position = blackKeyPositions[noteName] || 1;
-            key.style.left = `${(position - 0.35) * 40}px`;
+            // Find the previous white key to position the black key correctly
+            let prevWhiteIndex = -1;
+            for (let i = index - 1; i >= 0; i--) {
+                if (!virtualKeyboardNotes[i].isBlack) {
+                    prevWhiteIndex = whiteKeyMap.get(virtualKeyboardNotes[i].note);
+                    break;
+                }
+            }
+            
+            // Position black key between white keys
+            key.style.left = `${(prevWhiteIndex + 0.65) * 40}px`;
         } else {
-            key.style.left = `${whiteKeyIndex * 40}px`;
-            whiteKeyIndex++;
+            const keyIndex = whiteKeyMap.get(noteData.note);
+            key.style.left = `${keyIndex * 40}px`;
         }
         
         // Add key label
