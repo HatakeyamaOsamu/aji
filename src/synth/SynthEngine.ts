@@ -121,7 +121,7 @@ export class SynthEngine {
   }
 
   stopNote(key: string): void {
-    const voice = this.voicePool['activeVoices'].get(key);
+    const voice = this.voicePool.getActiveVoice(key);
     if (!voice) return;
     
     voice.triggerRelease();

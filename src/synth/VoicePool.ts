@@ -65,6 +65,10 @@ export class VoicePool {
     }
   }
 
+  getActiveVoice(key: string): Voice | undefined {
+    return this.activeVoices.get(key);
+  }
+
   updateSynthOptions(synthOptions: SynthOptions): void {
     this.synthOptions = synthOptions;
     
