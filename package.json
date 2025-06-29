@@ -15,7 +15,6 @@
     "vite": "^5.0.12"
   },
   "dependencies": {
-    "@types/tone": "^14.7.0",
     "tone": "^14.7.77"
   }
 }
