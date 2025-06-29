@@ -83,17 +83,19 @@
             transform: translateY(2px);
         }
 
-        /* Black key positions - 計算し直した正確な位置 */
-        .black-key[data-key="s"] { left: 26px; }  /* C# - between C and D */
-        .black-key[data-key="d"] { left: 68px; }  /* D# - between D and E */
-        .black-key[data-key="g"] { left: 152px; } /* F# - between F and G */
-        .black-key[data-key="h"] { left: 194px; } /* G# - between G and A */
-        .black-key[data-key="j"] { left: 236px; } /* A# - between A and B */
-        .black-key[data-key="2"] { left: 320px; } /* C# - between C and D (octave 2) */
-        .black-key[data-key="3"] { left: 362px; } /* D# - between D and E (octave 2) */
-        .black-key[data-key="5"] { left: 446px; } /* F# - between F and G (octave 2) */
-        .black-key[data-key="6"] { left: 488px; } /* G# - between G and A (octave 2) */
-        .black-key[data-key="7"] { left: 530px; } /* A# - between A and B (octave 2) */
+        /* Black key positions - 精密に計算した位置 */
+        /* 白鍵の幅: 40px, 隙間: 2px, 黒鍵の幅: 28px */
+        /* 黒鍵は白鍵の境界の中央に配置 */
+        .black-key[data-key="s"] { left: 27px; }   /* C# - (40 + 1 - 14) = 27px */
+        .black-key[data-key="d"] { left: 69px; }   /* D# - (82 + 1 - 14) = 69px */
+        .black-key[data-key="g"] { left: 153px; }  /* F# - (166 + 1 - 14) = 153px */
+        .black-key[data-key="h"] { left: 195px; }  /* G# - (208 + 1 - 14) = 195px */
+        .black-key[data-key="j"] { left: 237px; }  /* A# - (250 + 1 - 14) = 237px */
+        .black-key[data-key="2"] { left: 321px; }  /* C# - (334 + 1 - 14) = 321px */
+        .black-key[data-key="3"] { left: 363px; }  /* D# - (376 + 1 - 14) = 363px */
+        .black-key[data-key="5"] { left: 447px; }  /* F# - (460 + 1 - 14) = 447px */
+        .black-key[data-key="6"] { left: 489px; }  /* G# - (502 + 1 - 14) = 489px */
+        .black-key[data-key="7"] { left: 531px; }  /* A# - (544 + 1 - 14) = 531px */
 
         canvas {
             width: 100%;
