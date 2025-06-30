@@ -1,18 +1,18 @@
-# Musako - Simple Browser Synthesizer
+# Web Synth
 
-A polyphonic web synthesizer built with React, TypeScript, and Tone.js, featuring real-time audio processing and an intuitive interface.
+A clean and intuitive polyphonic web synthesizer built with React, TypeScript, and Tone.js.
 
 ## 🎹 Features
 
-- **Polyphonic synthesis** with intelligent voice management
-- **Multiple oscillator waveforms**: Sine, Square, Sawtooth, Triangle
+- **Polyphonic synthesis** with intelligent voice management  
+- **Multiple oscillator waveforms** with visual display: Sine, Square, Sawtooth, Triangle
 - **Advanced ADSR envelope** control
-- **Multi-mode filter**: Lowpass, Highpass, Bandpass, Notch
+- **Multi-mode filter** with frequency control
 - **Professional effects chain**: Chorus, Delay, Reverb
-- **Virtual piano keyboard** with touch support
+- **3-octave virtual piano** (C2-C5) with balanced layout
 - **Computer keyboard mapping** for live performance
-- **Octave shifting** for extended range
-- **Audio status monitoring** with user-friendly feedback
+- **Octave shifting** with unobtrusive controls
+- **Clean, minimalist interface**
 
 ## 🚀 Quick Start
 
@@ -39,51 +39,49 @@ npm run dev
 ### First Time Usage
 
 1. Open the application in your browser
-2. **Click on any piano key** to initialize audio
-3. Look for the audio status indicator:
-   - 🔊 "音を鳴らすには、鍵盤をクリックしてください" - Click a key to start
-   - 🎵 "音声準備完了" - Audio is ready
-   - ❌ "音声エラー" - See troubleshooting below
+2. **Click any piano key** to initialize audio
+3. Start playing with keyboard or mouse/touch
+
+## 🎮 Interface Overview
+
+### Layout
+- **Top-left**: "Web Synth" title
+- **Center**: Control panels (Volume, Waveform, Envelope, Filter, Effects)
+- **Bottom**: 3-octave piano keyboard (C2-C5)
+- **Bottom-right**: Octave controls (unobtrusive floating panel)
+
+### Waveform Display
+Each waveform selection shows a visual representation:
+- **Sine**: Smooth wave curve
+- **Square**: Digital on/off pattern  
+- **Sawtooth**: Ramp wave pattern
+- **Triangle**: Symmetric triangle wave
 
 ## 🔧 Troubleshooting
 
 ### No Sound Issue
 
-If you experience no sound when pressing keys, try these solutions:
+If you experience no sound when pressing keys:
 
 #### 1. **Browser Autoplay Policy**
 Modern browsers require user interaction before playing audio:
-- **Solution**: Click any piano key or press any keyboard key
-- The status indicator will show when audio is ready
+- **Solution**: Click any piano key to initialize audio
 
 #### 2. **HTTPS Requirement**
 Web Audio API requires a secure connection:
-- **Development**: `npm run dev` should serve on `https://localhost:5173`
+- **Development**: Ensure `npm run dev` serves on HTTPS
 - **Production**: Ensure your site is served over HTTPS
 
 #### 3. **Browser Compatibility**
 - **Chrome**: Full support ✅
 - **Firefox**: Full support ✅
-- **Safari**: May require additional user interaction ⚠️
-- **Mobile**: Touch a key to initialize audio 📱
+- **Safari**: May require additional interaction ⚠️
+- **Mobile**: Touch-optimized 📱
 
 #### 4. **System Audio**
 - Check system volume and audio output device
 - Ensure browser has permission to play audio
 - Try refreshing the page and clicking a key again
-
-#### 5. **Console Debugging**
-Open browser developer tools and check for errors:
-```javascript
-// Check audio context state
-console.log('AudioContext state:', Tone.getContext().state);
-
-// Manual audio test
-Tone.start().then(() => {
-  const synth = new Tone.Synth().toDestination();
-  synth.triggerAttackRelease("C4", "8n");
-});
-```
 
 ## 📁 Project Structure
 
@@ -117,16 +115,16 @@ Piano Layout:
   Black Keys:  S D   G H J   2 3   5 6 7
 White Keys: Z X C V B N M Q W E R T Y U I
 
-Base Octave Controls:
-- Left Arrow (←): Lower octave
-- Right Arrow (→): Higher octave
-- Current range displays in the UI
+Octave Controls (bottom-right panel):
+- [-] button: Lower octave
+- [+] button: Higher octave  
+- Display shows current base octave
 ```
 
 ### Synthesis Parameters
 
 #### Oscillator
-- **Waveforms**: Sine, Square, Sawtooth, Triangle
+- **Waveforms**: Sine, Square, Sawtooth, Triangle with visual display
 - **Polyphony**: Up to 32 simultaneous voices
 
 #### Envelope (ADSR)
@@ -137,12 +135,12 @@ Base Octave Controls:
 
 #### Filter
 - **Frequency**: 20Hz - 20kHz
-- **Type**: Lowpass (configurable)
+- **Type**: Lowpass filter
 
 #### Effects
-- **Chorus**: Depth and mix control
-- **Delay**: Time, feedback, and mix
-- **Reverb**: Room size and mix
+- **Chorus**: Frequency modulation with mix control
+- **Delay**: Echo effect with time, feedback, and mix
+- **Reverb**: Spatial reverb with mix control
 
 ## 🛠️ Development
 
@@ -165,33 +163,28 @@ npm run preview      # Preview production build
 - **Tone.js 14** - Web Audio synthesis
 - **Vite 5** - Fast build tool and dev server
 
-## 🔍 Key Features Explained
+## 🎨 Design Philosophy
 
-### Audio Initialization
-The synthesizer uses a **user-interaction-first** approach to comply with browser autoplay policies:
+### Minimalist Interface
+- Clean, uncluttered layout
+- Essential controls only
+- Visual feedback where helpful (waveform display)
+- Unobtrusive secondary controls (octave)
 
-1. Audio context remains suspended until user interaction
-2. First key press initializes the audio system
-3. Status indicator provides clear feedback
-4. Graceful error handling with user-friendly messages
+### Keyboard Layout
+- **3-octave range** (C2-C5): Balanced coverage without overwhelming
+- **Equal margins**: Visual balance with padding on both sides
+- **Clear key mapping**: Logical computer keyboard to piano mapping
 
-### Voice Management
-- Pre-allocated voice pool for optimal performance
-- Smart voice stealing when limit is reached
-- Real-time parameter updates across all voices
-
-### Browser Compatibility
-Tested and optimized for:
-- Chrome 90+ ✅
-- Firefox 88+ ✅  
-- Safari 14+ ⚠️ (may need extra interaction)
-- Mobile browsers 📱 (touch-optimized)
+### Audio-First Approach
+- User interaction required for audio initialization (browser compliance)
+- Immediate audio feedback
+- No unnecessary status messages or notifications
 
 ## 🐛 Known Issues
 
 1. **Safari Audio Delay**: Safari may require multiple interactions to start audio
 2. **Mobile Performance**: Complex effects may cause latency on older devices
-3. **Firefox Volume**: Some users report lower volume on Firefox
 
 ## 🤝 Contributing
 
@@ -203,10 +196,11 @@ Tested and optimized for:
 
 ## 📝 Recent Updates
 
-- **Fixed**: Browser autoplay policy compliance
-- **Added**: Audio status monitoring and user feedback
-- **Improved**: Error handling and user experience
-- **Enhanced**: Mobile touch support
+- **Simplified UI**: Reduced to essential "Web Synth" title
+- **Optimized keyboard**: 3-octave layout with balanced margins
+- **Visual waveforms**: Real-time waveform display in controls
+- **Floating octave controls**: Unobtrusive bottom-right placement
+- **Audio initialization**: Browser-compliant user interaction requirement
 
 ## 📄 License
 
@@ -219,7 +213,5 @@ MIT License - see [LICENSE](LICENSE) for details
 - [Vite](https://vitejs.dev/) for the fast build tooling
 
 ---
-
-**Need Help?** Check the troubleshooting section above or open an issue on GitHub.
 
 Made with ♪ by [HatakeyamaOsamu](https://github.com/HatakeyamaOsamu)
