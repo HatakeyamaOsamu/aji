@@ -22,5 +22,20 @@ export const EFFECT_DEFAULTS = {
   filterType: 'lowpass' as const
 };
 
+export const LFO_DEFAULTS = {
+  rate: 2,
+  pitchDepth: 0,
+  filterDepth: 0,
+  ampDepth: 0,
+  waveform: 'sine' as const,
+  sync: false
+};
+
 export const WAVEFORM_OPTIONS = ['sine', 'square', 'sawtooth', 'triangle'] as const;
 export type WaveformType = typeof WAVEFORM_OPTIONS[number];
+
+export const LFO_WAVEFORM_OPTIONS = ['sine', 'square', 'sawtooth', 'random'] as const;
+export type LfoWaveformType = typeof LFO_WAVEFORM_OPTIONS[number];
+
+export const LFO_TARGET_OPTIONS = ['pitch', 'filter', 'amplitude'] as const;
+export type LfoTargetType = typeof LFO_TARGET_OPTIONS[number];

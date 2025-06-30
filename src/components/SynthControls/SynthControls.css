@@ -89,6 +89,74 @@
   font-weight: 500;
 }
 
+/* LFO Control Styles */
+.lfo-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lfo-main-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lfo-control {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lfo-control label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.lfo-targets {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.lfo-target-title {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+}
+
+.lfo-target-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lfo-sync {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.lfo-sync-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.lfo-sync-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #4CAF50;
+  cursor: pointer;
+}
+
+.lfo-sync-text {
+  font-weight: 500;
+}
+
 /* Octave Control Styles */
 .octave-control {
   grid-column: span 2;
