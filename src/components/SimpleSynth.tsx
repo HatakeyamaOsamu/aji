@@ -50,7 +50,7 @@ export const SimpleSynth: React.FC = () => {
   const delayRef = useRef<Tone.FeedbackDelay | null>(null);
   const chorusRef = useRef<Tone.Chorus | null>(null);
   const filterRef = useRef<Tone.Filter | null>(null);
-  const volumeRef = useRef<Tone.Volume | null>(null);
+  const volumeNodeRef = useRef<Tone.Volume | null>(null);
   
   // State for active notes
   const activeNotesRef = useRef<Set<string>>(new Set());
@@ -86,15 +86,15 @@ export const SimpleSynth: React.FC = () => {
       const delay = new Tone.FeedbackDelay({ delayTime: 0.25, feedback: 0.3, wet: delayWet });
       const chorus = new Tone.Chorus({ frequency: 1.5, depth: 0.7, wet: chorusWet });
       const filter = new Tone.Filter({ frequency: filterFreq, type: 'lowpass' });
-      const volume = new Tone.Volume(volume);
+      const volumeNode = new Tone.Volume(volume);
       
       // Connect audio chain
       synth.connect(filter);
       filter.connect(chorus);
       chorus.connect(delay);
       delay.connect(reverb);
-      reverb.connect(volume);
-      volume.toDestination();
+      reverb.connect(volumeNode);
+      volumeNode.toDestination();
       
       // Store references
       synthRef.current = synth;
@@ -102,7 +102,7 @@ export const SimpleSynth: React.FC = () => {
       delayRef.current = delay;
       chorusRef.current = chorus;
       filterRef.current = filter;
-      volumeRef.current = volume;
+      volumeNodeRef.current = volumeNode;
       
       // Wait for reverb to be ready
       await reverb.ready;
@@ -117,7 +117,7 @@ export const SimpleSynth: React.FC = () => {
       delayRef.current?.dispose();
       chorusRef.current?.dispose();
       filterRef.current?.dispose();
-      volumeRef.current?.dispose();
+      volumeNodeRef.current?.dispose();
     };
   }, []);
   
@@ -133,7 +133,7 @@ export const SimpleSynth: React.FC = () => {
   
   // Update effects
   useEffect(() => {
-    if (volumeRef.current) volumeRef.current.volume.value = volume;
+    if (volumeNodeRef.current) volumeNodeRef.current.volume.value = volume;
   }, [volume]);
   
   useEffect(() => {
