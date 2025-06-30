@@ -40,9 +40,8 @@ export const SimpleSynth: React.FC = () => {
   const [chorusWet, setChorusWet] = useState(EFFECT_DEFAULTS.chorusWet);
   const [filterFreq, setFilterFreq] = useState(EFFECT_DEFAULTS.filterFreq);
   
-  // LFO parameters state
+  // LFO parameters state (no pitch LFO)
   const [lfoRate, setLfoRate] = useState(LFO_DEFAULTS.rate);
-  const [lfoPitchDepth, setLfoPitchDepth] = useState(LFO_DEFAULTS.pitchDepth);
   const [lfoFilterDepth, setLfoFilterDepth] = useState(LFO_DEFAULTS.filterDepth);
   const [lfoAmpDepth, setLfoAmpDepth] = useState(LFO_DEFAULTS.ampDepth);
   const [lfoWaveform, setLfoWaveform] = useState<LfoWaveformType>(LFO_DEFAULTS.waveform);
@@ -60,7 +59,6 @@ export const SimpleSynth: React.FC = () => {
     { reverbWet, delayWet, chorusWet, filterFreq },
     { 
       rate: lfoRate,
-      pitchDepth: lfoPitchDepth,
       filterDepth: lfoFilterDepth,
       ampDepth: lfoAmpDepth,
       waveform: lfoWaveform,
@@ -144,13 +142,11 @@ export const SimpleSynth: React.FC = () => {
         
         <LfoControl
           rate={lfoRate}
-          pitchDepth={lfoPitchDepth}
           filterDepth={lfoFilterDepth}
           ampDepth={lfoAmpDepth}
           waveform={lfoWaveform}
           sync={lfoSync}
           onRateChange={setLfoRate}
-          onPitchDepthChange={setLfoPitchDepth}
           onFilterDepthChange={setLfoFilterDepth}
           onAmpDepthChange={setLfoAmpDepth}
           onWaveformChange={setLfoWaveform}
