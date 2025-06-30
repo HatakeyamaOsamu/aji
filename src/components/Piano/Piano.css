@@ -1,0 +1,92 @@
+.keyboard-wrapper {
+  overflow-x: auto;
+  margin: 20px 0;
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.virtual-keyboard {
+  position: relative;
+  height: 200px;
+  margin: 0 auto;
+}
+
+.virtual-keyboard.extended {
+  width: 1400px;
+}
+
+.piano-key {
+  position: absolute;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 10px;
+  transition: all 0.1s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.white-key {
+  width: 40px;
+  height: 180px;
+  background: white;
+  z-index: 1;
+  border-radius: 0 0 4px 4px;
+}
+
+.white-key:hover {
+  background: #f0f0f0;
+}
+
+.white-key.active {
+  background: #e0e0e0;
+  transform: translateY(2px);
+}
+
+.black-key {
+  width: 24px;
+  height: 120px;
+  background: #333;
+  z-index: 2;
+  border-radius: 0 0 3px 3px;
+  color: white;
+}
+
+.black-key:hover {
+  background: #555;
+}
+
+.black-key.active {
+  background: #666;
+  transform: translateY(1px);
+}
+
+.key-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.black-key .key-label {
+  color: #ccc;
+}
+
+.note-label {
+  font-size: 12px;
+  color: #999;
+}
+
+.octave-indicator {
+  position: absolute;
+  bottom: -25px;
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+}
