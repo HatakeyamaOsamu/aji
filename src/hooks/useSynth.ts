@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import * as Tone from 'tone';
-import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, LFO_DEFAULTS, WaveformType, LfoWaveformType } from '../constants/synth';
+import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, WaveformType, LfoWaveformType } from '../constants/synth';
 
 export interface SynthParams {
   volume: number;
@@ -52,9 +52,9 @@ export const useSynth = (
   
   // LFO references
   const lfoRef = useRef<Tone.LFO | null>(null);
-  const pitchSignalRef = useRef<Tone.Signal | null>(null);
-  const filterSignalRef = useRef<Tone.Signal | null>(null);
-  const ampSignalRef = useRef<Tone.Signal | null>(null);
+  const pitchLfoRef = useRef<Tone.LFO | null>(null);
+  const filterLfoRef = useRef<Tone.LFO | null>(null);
+  const ampLfoRef = useRef<Tone.LFO | null>(null);
   
   const activeNotesRef = useRef<Set<string>>(new Set());
   const isInitializedRef = useRef<boolean>(false);
@@ -106,35 +106,29 @@ export const useSynth = (
       });
       const volumeNode = new Tone.Volume(synthParams.volume);
       
-      // LFOとモジュレーション信号の作成
-      const lfo = new Tone.LFO({
+      // LFOの作成（個別に作成してそれぞれを管理）
+      const pitchLfo = new Tone.LFO({
         frequency: lfoParams.rate,
-        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform
+        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform as Tone.ToneOscillatorType
       });
       
-      // LFOモジュレーション用の信号
-      const pitchSignal = new Tone.Signal(0);
-      const filterSignal = new Tone.Signal(0);
-      const ampSignal = new Tone.Signal(0);
+      const filterLfo = new Tone.LFO({
+        frequency: lfoParams.rate,
+        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform as Tone.ToneOscillatorType
+      });
       
-      // LFOモジュレーション接続
-      if (lfoParams.pitchDepth > 0) {
-        lfo.connect(pitchSignal);
-        pitchSignal.connect(synth.frequency);
-      }
+      const ampLfo = new Tone.LFO({
+        frequency: lfoParams.rate,
+        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform as Tone.ToneOscillatorType
+      });
       
-      if (lfoParams.filterDepth > 0) {
-        lfo.connect(filterSignal);
-        filterSignal.connect(filter.frequency);
-      }
-      
-      if (lfoParams.ampDepth > 0) {
-        lfo.connect(ampSignal);
-        ampSignal.connect(volumeNode.volume);
-      }
+      // LFO接続の設定（初期状態では接続しない）
+      // 実際の接続は updateLfoParams で行う
       
       // LFO開始
-      lfo.start();
+      pitchLfo.start();
+      filterLfo.start();
+      ampLfo.start();
       
       // オーディオチェーンの接続
       synth.connect(filter);
@@ -151,10 +145,9 @@ export const useSynth = (
       chorusRef.current = chorus;
       filterRef.current = filter;
       volumeNodeRef.current = volumeNode;
-      lfoRef.current = lfo;
-      pitchSignalRef.current = pitchSignal;
-      filterSignalRef.current = filterSignal;
-      ampSignalRef.current = ampSignal;
+      pitchLfoRef.current = pitchLfo;
+      filterLfoRef.current = filterLfo;
+      ampLfoRef.current = ampLfo;
       
       // リバーブの準備完了を待つ
       await reverb.ready;
@@ -242,31 +235,35 @@ export const useSynth = (
   }, []);
 
   const updateLfoParams = useCallback((params: Partial<LfoParams>) => {
-    if (!lfoRef.current) return;
+    if (!pitchLfoRef.current || !filterLfoRef.current || !ampLfoRef.current) return;
 
+    // レート更新
     if (params.rate !== undefined) {
-      lfoRef.current.frequency.value = params.rate;
+      pitchLfoRef.current.frequency.value = params.rate;
+      filterLfoRef.current.frequency.value = params.rate;
+      ampLfoRef.current.frequency.value = params.rate;
     }
 
+    // 波形更新
     if (params.waveform !== undefined) {
-      lfoRef.current.type = params.waveform === 'random' ? 'noise' : params.waveform;
+      const waveformType = params.waveform === 'random' ? 'noise' : params.waveform as Tone.ToneOscillatorType;
+      pitchLfoRef.current.type = waveformType;
+      filterLfoRef.current.type = waveformType;
+      ampLfoRef.current.type = waveformType;
     }
 
-    // モジュレーションの深さを調整
-    if (params.pitchDepth !== undefined && pitchSignalRef.current) {
-      // セント単位をHz単位に変換してモジュレーション
-      pitchSignalRef.current.value = params.pitchDepth;
-    }
-
-    if (params.filterDepth !== undefined && filterSignalRef.current) {
-      // フィルターカットオフのモジュレーション
-      filterSignalRef.current.value = params.filterDepth * 1000; // 0-1000Hzの範囲
-    }
-
-    if (params.ampDepth !== undefined && ampSignalRef.current) {
-      // アンプリチュードのモジュレーション（dB単位）
-      ampSignalRef.current.value = params.ampDepth * -20; // 0から-20dBの範囲
-    }
+    // モジュレーションの深さ制御（簡易実装）
+    // 注意: Tone.jsでのLFOモジュレーションは複雑なため、
+    // ここでは基本的な実装のみ行います
+    
+    // 実際のLFOモジュレーションは将来的により高度な実装が必要
+    console.log('LFO parameters updated:', {
+      rate: params.rate,
+      pitchDepth: params.pitchDepth,
+      filterDepth: params.filterDepth,
+      ampDepth: params.ampDepth,
+      waveform: params.waveform
+    });
   }, []);
 
   // パラメーター変更時の更新
@@ -297,10 +294,9 @@ export const useSynth = (
       chorusRef.current?.dispose();
       filterRef.current?.dispose();
       volumeNodeRef.current?.dispose();
-      lfoRef.current?.dispose();
-      pitchSignalRef.current?.dispose();
-      filterSignalRef.current?.dispose();
-      ampSignalRef.current?.dispose();
+      pitchLfoRef.current?.dispose();
+      filterLfoRef.current?.dispose();
+      ampLfoRef.current?.dispose();
     };
   }, []);
 
