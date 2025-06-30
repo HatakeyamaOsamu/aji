@@ -6,13 +6,14 @@ import { WaveformSelector } from './SynthControls/WaveformSelector';
 import { EnvelopeControl } from './SynthControls/EnvelopeControl';
 import { FilterControl } from './SynthControls/FilterControl';
 import { EffectsControl } from './SynthControls/EffectsControl';
+import { LfoControl } from './SynthControls/LfoControl';
 import { WaveformVisualizer } from './WaveformVisualizer';
 import { useSynth } from '../hooks/useSynth';
 import { useKeyboardInput } from '../hooks/useKeyboardInput';
 import { usePianoKeys } from '../hooks/usePianoKeys';
 import { getKeyboardMap } from '../utils/noteMapping';
 import { DEFAULT_BASE_OCTAVE } from '../constants/keyboard';
-import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, WaveformType } from '../constants/synth';
+import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, LFO_DEFAULTS, WaveformType, LfoWaveformType } from '../constants/synth';
 import '../styles/synth.css';
 
 export const SimpleSynth: React.FC = () => {
@@ -39,6 +40,14 @@ export const SimpleSynth: React.FC = () => {
   const [chorusWet, setChorusWet] = useState(EFFECT_DEFAULTS.chorusWet);
   const [filterFreq, setFilterFreq] = useState(EFFECT_DEFAULTS.filterFreq);
   
+  // LFO parameters state
+  const [lfoRate, setLfoRate] = useState(LFO_DEFAULTS.rate);
+  const [lfoPitchDepth, setLfoPitchDepth] = useState(LFO_DEFAULTS.pitchDepth);
+  const [lfoFilterDepth, setLfoFilterDepth] = useState(LFO_DEFAULTS.filterDepth);
+  const [lfoAmpDepth, setLfoAmpDepth] = useState(LFO_DEFAULTS.ampDepth);
+  const [lfoWaveform, setLfoWaveform] = useState<LfoWaveformType>(LFO_DEFAULTS.waveform);
+  const [lfoSync, setLfoSync] = useState(LFO_DEFAULTS.sync);
+  
   // Active keys state
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
   
@@ -48,7 +57,15 @@ export const SimpleSynth: React.FC = () => {
     stopNote: synthStopNote
   } = useSynth(
     { volume, attack, decay, sustain, release, waveform },
-    { reverbWet, delayWet, chorusWet, filterFreq }
+    { reverbWet, delayWet, chorusWet, filterFreq },
+    { 
+      rate: lfoRate,
+      pitchDepth: lfoPitchDepth,
+      filterDepth: lfoFilterDepth,
+      ampDepth: lfoAmpDepth,
+      waveform: lfoWaveform,
+      sync: lfoSync
+    }
   );
   
   // Note handling
@@ -123,6 +140,21 @@ export const SimpleSynth: React.FC = () => {
           onReverbChange={setReverbWet}
           onDelayChange={setDelayWet}
           onChorusChange={setChorusWet}
+        />
+        
+        <LfoControl
+          rate={lfoRate}
+          pitchDepth={lfoPitchDepth}
+          filterDepth={lfoFilterDepth}
+          ampDepth={lfoAmpDepth}
+          waveform={lfoWaveform}
+          sync={lfoSync}
+          onRateChange={setLfoRate}
+          onPitchDepthChange={setLfoPitchDepth}
+          onFilterDepthChange={setLfoFilterDepth}
+          onAmpDepthChange={setLfoAmpDepth}
+          onWaveformChange={setLfoWaveform}
+          onSyncChange={setLfoSync}
         />
       </div>
       
