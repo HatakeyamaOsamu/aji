@@ -10,7 +10,8 @@ import { useSynth } from '../hooks/useSynth';
 import { useKeyboardInput } from '../hooks/useKeyboardInput';
 import { usePianoKeys } from '../hooks/usePianoKeys';
 import { getKeyboardMap } from '../utils/noteMapping';
-import { DEFAULT_BASE_OCTAVE, SYNTH_DEFAULTS, EFFECT_DEFAULTS, WaveformType } from '../constants/synth';
+import { DEFAULT_BASE_OCTAVE } from '../constants/keyboard';
+import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, WaveformType } from '../constants/synth';
 import '../styles/synth.css';
 
 export const SimpleSynth: React.FC = () => {
