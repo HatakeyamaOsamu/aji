@@ -72,10 +72,18 @@ export const useSynth = (
   const filterLfoRef = useRef<Tone.LFO | null>(null);
   const ampLfoRef = useRef<Tone.LFO | null>(null);
   
+  // LFO scale nodes for controlling modulation depth
+  const pitchScaleRef = useRef<Tone.Scale | null>(null);
+  const filterScaleRef = useRef<Tone.Scale | null>(null);
+  const ampScaleRef = useRef<Tone.Scale | null>(null);
+  
   const activeNotesRef = useRef<Set<string>>(new Set());
   const isInitializedRef = useRef<boolean>(false);
   const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+
+  // ベース周波数の参照を保持（ピッチLFO用）
+  const baseFilterFreqRef = useRef<number>(effectParams.filterFreq);
 
   // オーディオコンテキストの初期化（ユーザーインタラクション時に呼び出す）
   const initializeAudio = useCallback(async (): Promise<boolean> => {
@@ -122,17 +130,57 @@ export const useSynth = (
       });
       const volumeNode = new Tone.Volume(synthParams.volume);
       
-      // LFOの作成（簡易版 - UIテスト用）
+      // LFOの作成
       const lfoWaveformType = getLfoWaveformType(lfoParams.waveform);
       
-      const pitchLfo = new Tone.LFO(lfoParams.rate, 0, 1);
+      const pitchLfo = new Tone.LFO(lfoParams.rate, -1, 1);
       pitchLfo.type = lfoWaveformType;
       
-      const filterLfo = new Tone.LFO(lfoParams.rate, 0, 1);
+      const filterLfo = new Tone.LFO(lfoParams.rate, -1, 1);
       filterLfo.type = lfoWaveformType;
       
-      const ampLfo = new Tone.LFO(lfoParams.rate, 0, 1);
+      const ampLfo = new Tone.LFO(lfoParams.rate, -1, 1);
       ampLfo.type = lfoWaveformType;
+      
+      // LFOスケールノードの作成（モジュレーション深度制御用）
+      const pitchScale = new Tone.Scale(-1200, 1200); // ±1200セント（1オクターブ）
+      const filterScale = new Tone.Scale(0.1, 2); // フィルター周波数の倍率
+      const ampScale = new Tone.Scale(-12, 12); // ±12dB
+      
+      // LFOとスケールノードの接続
+      pitchLfo.connect(pitchScale);
+      filterLfo.connect(filterScale);
+      ampLfo.connect(ampScale);
+      
+      // フィルターLFOの接続（これは直接可能）
+      filterScale.connect(filter.frequency);
+      
+      // アンプLFOの接続
+      ampScale.connect(volumeNode.volume);
+      
+      // ピッチLFOは特別な処理が必要（PolySynthの制約のため）
+      // 定期的にLFOの値を読み取ってピッチを手動調整
+      let pitchLfoValue = 0;
+      const pitchUpdateInterval = setInterval(() => {
+        if (pitchScale.input.value !== undefined) {
+          pitchLfoValue = pitchScale.input.value * (lfoParams.pitchDepth / 1200); // セントをオクターブ比に変換
+          // PolySynthの各音符のデチューンを調整
+          // 注意: これは近似的な実装です
+          if (synthRef.current && lfoParams.pitchDepth > 0) {
+            try {
+              // 新しいピッチ変調値を適用（次回のノート開始時に反映）
+              const newDetune = pitchLfoValue * 100; // セントに変換
+              synthRef.current.set({
+                oscillator: {
+                  detune: newDetune
+                }
+              });
+            } catch (error) {
+              console.warn('ピッチLFO適用エラー:', error);
+            }
+          }
+        }
+      }, 50); // 20Hzで更新
       
       // LFO開始
       pitchLfo.start();
@@ -157,6 +205,17 @@ export const useSynth = (
       pitchLfoRef.current = pitchLfo;
       filterLfoRef.current = filterLfo;
       ampLfoRef.current = ampLfo;
+      pitchScaleRef.current = pitchScale;
+      filterScaleRef.current = filterScale;
+      ampScaleRef.current = ampScale;
+      
+      // ベース周波数を設定
+      baseFilterFreqRef.current = effectParams.filterFreq;
+      
+      // クリーンアップ時にインターバルを停止
+      const cleanup = () => {
+        clearInterval(pitchUpdateInterval);
+      };
       
       // リバーブの準備完了を待つ
       await reverb.ready;
@@ -165,7 +224,7 @@ export const useSynth = (
       setIsAudioReady(true);
       setAudioError(null);
       
-      console.log('オーディオシステムが正常に初期化されました');
+      console.log('LFO接続を含むオーディオシステムが正常に初期化されました');
       return true;
       
     } catch (error) {
@@ -240,8 +299,16 @@ export const useSynth = (
     }
     if (params.filterFreq !== undefined && filterRef.current) {
       filterRef.current.frequency.value = params.filterFreq;
+      baseFilterFreqRef.current = params.filterFreq;
+      
+      // フィルターLFOの範囲を更新
+      if (filterScaleRef.current) {
+        const filterDepth = lfoParams.filterDepth;
+        filterScaleRef.current.min = params.filterFreq * (1 - filterDepth);
+        filterScaleRef.current.max = params.filterFreq * (1 + filterDepth);
+      }
     }
-  }, []);
+  }, [lfoParams.filterDepth]);
 
   const updateLfoParams = useCallback((params: Partial<LfoParams>) => {
     if (!pitchLfoRef.current || !filterLfoRef.current || !ampLfoRef.current) return;
@@ -261,8 +328,26 @@ export const useSynth = (
       ampLfoRef.current.type = waveformType;
     }
 
+    // 深度更新
+    if (params.pitchDepth !== undefined && pitchScaleRef.current) {
+      pitchScaleRef.current.min = -params.pitchDepth;
+      pitchScaleRef.current.max = params.pitchDepth;
+    }
+
+    if (params.filterDepth !== undefined && filterScaleRef.current) {
+      const baseFreq = baseFilterFreqRef.current;
+      filterScaleRef.current.min = baseFreq * (1 - params.filterDepth);
+      filterScaleRef.current.max = baseFreq * (1 + params.filterDepth);
+    }
+
+    if (params.ampDepth !== undefined && ampScaleRef.current) {
+      const maxDbChange = 12 * params.ampDepth; // 最大±12dBの変化
+      ampScaleRef.current.min = -maxDbChange;
+      ampScaleRef.current.max = maxDbChange;
+    }
+
     // LFOパラメーター更新をログ出力（デバッグ用）
-    console.log('LFO parameters updated:', {
+    console.log('LFO parameters updated and connected:', {
       rate: params.rate,
       pitchDepth: params.pitchDepth,
       filterDepth: params.filterDepth,
@@ -302,6 +387,9 @@ export const useSynth = (
       pitchLfoRef.current?.dispose();
       filterLfoRef.current?.dispose();
       ampLfoRef.current?.dispose();
+      pitchScaleRef.current?.dispose();
+      filterScaleRef.current?.dispose();
+      ampScaleRef.current?.dispose();
     };
   }, []);
 
