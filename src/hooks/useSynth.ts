@@ -38,6 +38,23 @@ export interface UseSynthReturn {
   audioError: string | null;
 }
 
+// LFO波形をTone.jsの有効な型に変換する関数
+const getLfoWaveformType = (waveform: LfoWaveformType): Tone.ToneOscillatorType => {
+  switch (waveform) {
+    case 'sine':
+      return 'sine';
+    case 'square':
+      return 'square';
+    case 'sawtooth':
+      return 'sawtooth';
+    case 'random':
+      // randomの場合はsineにフォールバック（将来的にノイズ生成器を使用予定）
+      return 'sine';
+    default:
+      return 'sine';
+  }
+};
+
 export const useSynth = (
   synthParams: SynthParams,
   effectParams: EffectParams,
@@ -51,7 +68,6 @@ export const useSynth = (
   const volumeNodeRef = useRef<Tone.Volume | null>(null);
   
   // LFO references
-  const lfoRef = useRef<Tone.LFO | null>(null);
   const pitchLfoRef = useRef<Tone.LFO | null>(null);
   const filterLfoRef = useRef<Tone.LFO | null>(null);
   const ampLfoRef = useRef<Tone.LFO | null>(null);
@@ -106,24 +122,17 @@ export const useSynth = (
       });
       const volumeNode = new Tone.Volume(synthParams.volume);
       
-      // LFOの作成（個別に作成してそれぞれを管理）
-      const pitchLfo = new Tone.LFO({
-        frequency: lfoParams.rate,
-        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform as Tone.ToneOscillatorType
-      });
+      // LFOの作成（簡易版 - UIテスト用）
+      const lfoWaveformType = getLfoWaveformType(lfoParams.waveform);
       
-      const filterLfo = new Tone.LFO({
-        frequency: lfoParams.rate,
-        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform as Tone.ToneOscillatorType
-      });
+      const pitchLfo = new Tone.LFO(lfoParams.rate, 0, 1);
+      pitchLfo.type = lfoWaveformType;
       
-      const ampLfo = new Tone.LFO({
-        frequency: lfoParams.rate,
-        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform as Tone.ToneOscillatorType
-      });
+      const filterLfo = new Tone.LFO(lfoParams.rate, 0, 1);
+      filterLfo.type = lfoWaveformType;
       
-      // LFO接続の設定（初期状態では接続しない）
-      // 実際の接続は updateLfoParams で行う
+      const ampLfo = new Tone.LFO(lfoParams.rate, 0, 1);
+      ampLfo.type = lfoWaveformType;
       
       // LFO開始
       pitchLfo.start();
@@ -246,17 +255,13 @@ export const useSynth = (
 
     // 波形更新
     if (params.waveform !== undefined) {
-      const waveformType = params.waveform === 'random' ? 'noise' : params.waveform as Tone.ToneOscillatorType;
+      const waveformType = getLfoWaveformType(params.waveform);
       pitchLfoRef.current.type = waveformType;
       filterLfoRef.current.type = waveformType;
       ampLfoRef.current.type = waveformType;
     }
 
-    // モジュレーションの深さ制御（簡易実装）
-    // 注意: Tone.jsでのLFOモジュレーションは複雑なため、
-    // ここでは基本的な実装のみ行います
-    
-    // 実際のLFOモジュレーションは将来的により高度な実装が必要
+    // LFOパラメーター更新をログ出力（デバッグ用）
     console.log('LFO parameters updated:', {
       rate: params.rate,
       pitchDepth: params.pitchDepth,
