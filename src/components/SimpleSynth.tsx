@@ -2,46 +2,78 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as Tone from 'tone';
 import '../styles/synth.css';
 
-// Note mapping for keyboard
-const KEYBOARD_MAP: Record<string, string> = {
-  // Lower octave (C3-B3)
-  'z': 'C3', 's': 'C#3', 'x': 'D3', 'd': 'D#3', 'c': 'E3',
-  'v': 'F3', 'g': 'F#3', 'b': 'G3', 'h': 'G#3', 'n': 'A3',
-  'j': 'A#3', 'm': 'B3',
-  // Upper octave (C4-B4)
-  'q': 'C4', '2': 'C#4', 'w': 'D4', '3': 'D#4', 'e': 'E4',
-  'r': 'F4', '5': 'F#4', 't': 'G4', '6': 'G#4', 'y': 'A4',
-  '7': 'A#4', 'u': 'B4', 'i': 'C5'
+// Note mapping for keyboard (with octave shift)
+const KEYBOARD_BASE_MAP: Record<string, string> = {
+  // Lower row (Z-M)
+  'z': 'C', 's': 'C#', 'x': 'D', 'd': 'D#', 'c': 'E',
+  'v': 'F', 'g': 'F#', 'b': 'G', 'h': 'G#', 'n': 'A',
+  'j': 'A#', 'm': 'B',
+  // Upper row (Q-I) - one octave higher
+  'q': 'C', '2': 'C#', 'w': 'D', '3': 'D#', 'e': 'E',
+  'r': 'F', '5': 'F#', 't': 'G', '6': 'G#', 'y': 'A',
+  '7': 'A#', 'u': 'B', 'i': 'C'
 };
 
-// Piano key definitions
-const PIANO_KEYS = [
-  { note: 'C3', isBlack: false, position: 0 },
-  { note: 'C#3', isBlack: true, position: 28 },
-  { note: 'D3', isBlack: false, position: 40 },
-  { note: 'D#3', isBlack: true, position: 68 },
-  { note: 'E3', isBlack: false, position: 80 },
-  { note: 'F3', isBlack: false, position: 120 },
-  { note: 'F#3', isBlack: true, position: 148 },
-  { note: 'G3', isBlack: false, position: 160 },
-  { note: 'G#3', isBlack: true, position: 188 },
-  { note: 'A3', isBlack: false, position: 200 },
-  { note: 'A#3', isBlack: true, position: 228 },
-  { note: 'B3', isBlack: false, position: 240 },
-  { note: 'C4', isBlack: false, position: 280 },
-  { note: 'C#4', isBlack: true, position: 308 },
-  { note: 'D4', isBlack: false, position: 320 },
-  { note: 'D#4', isBlack: true, position: 348 },
-  { note: 'E4', isBlack: false, position: 360 },
-  { note: 'F4', isBlack: false, position: 400 },
-  { note: 'F#4', isBlack: true, position: 428 },
-  { note: 'G4', isBlack: false, position: 440 },
-  { note: 'G#4', isBlack: true, position: 468 },
-  { note: 'A4', isBlack: false, position: 480 },
-  { note: 'A#4', isBlack: true, position: 508 },
-  { note: 'B4', isBlack: false, position: 520 },
-  { note: 'C5', isBlack: false, position: 560 },
-];
+// Get keyboard map with octave offsets
+const getKeyboardMap = (baseOctave: number): Record<string, string> => {
+  const map: Record<string, string> = {};
+  
+  // Lower row
+  ['z', 's', 'x', 'd', 'c', 'v', 'g', 'b', 'h', 'n', 'j', 'm'].forEach(key => {
+    const note = KEYBOARD_BASE_MAP[key];
+    map[key] = `${note}${baseOctave}`;
+  });
+  
+  // Upper row (one octave higher)
+  ['q', '2', 'w', '3', 'e', 'r', '5', 't', '6', 'y', '7', 'u'].forEach(key => {
+    const note = KEYBOARD_BASE_MAP[key];
+    map[key] = `${note}${baseOctave + 1}`;
+  });
+  
+  // Special case for 'i' - goes to the next octave
+  map['i'] = `C${baseOctave + 2}`;
+  
+  return map;
+};
+
+// Generate piano keys for multiple octaves
+const generatePianoKeys = (startOctave: number, numOctaves: number) => {
+  const keys = [];
+  const notePattern = [
+    { note: 'C', isBlack: false, relativePos: 0 },
+    { note: 'C#', isBlack: true, relativePos: 28 },
+    { note: 'D', isBlack: false, relativePos: 40 },
+    { note: 'D#', isBlack: true, relativePos: 68 },
+    { note: 'E', isBlack: false, relativePos: 80 },
+    { note: 'F', isBlack: false, relativePos: 120 },
+    { note: 'F#', isBlack: true, relativePos: 148 },
+    { note: 'G', isBlack: false, relativePos: 160 },
+    { note: 'G#', isBlack: true, relativePos: 188 },
+    { note: 'A', isBlack: false, relativePos: 200 },
+    { note: 'A#', isBlack: true, relativePos: 228 },
+    { note: 'B', isBlack: false, relativePos: 240 },
+  ];
+  
+  for (let octave = 0; octave < numOctaves; octave++) {
+    const octaveOffset = octave * 280; // Width of one octave
+    notePattern.forEach(({ note, isBlack, relativePos }) => {
+      keys.push({
+        note: `${note}${startOctave + octave}`,
+        isBlack,
+        position: relativePos + octaveOffset
+      });
+    });
+  }
+  
+  // Add final C
+  keys.push({
+    note: `C${startOctave + numOctaves}`,
+    isBlack: false,
+    position: numOctaves * 280
+  });
+  
+  return keys;
+};
 
 export const SimpleSynth: React.FC = () => {
   // Synth and effects
@@ -55,6 +87,15 @@ export const SimpleSynth: React.FC = () => {
   // State for active notes
   const activeNotesRef = useRef<Set<string>>(new Set());
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
+  
+  // Octave control
+  const [baseOctave, setBaseOctave] = useState(3);
+  const [keyboardMap, setKeyboardMap] = useState(getKeyboardMap(3));
+  
+  // Piano display settings
+  const startOctave = 2;
+  const numOctaves = 5; // Show 5 octaves (C2 to C7)
+  const pianoKeys = generatePianoKeys(startOctave, numOctaves);
   
   // Synth parameters state
   const [volume, setVolume] = useState(-10);
@@ -70,16 +111,22 @@ export const SimpleSynth: React.FC = () => {
   const [chorusWet, setChorusWet] = useState(0);
   const [filterFreq, setFilterFreq] = useState(2000);
   
+  // Update keyboard map when base octave changes
+  useEffect(() => {
+    setKeyboardMap(getKeyboardMap(baseOctave));
+  }, [baseOctave]);
+  
   // Initialize synth and effects
   useEffect(() => {
     const initAudio = async () => {
       await Tone.start();
       
-      // Create synth
+      // Create synth with more voices for extended range
       const synth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: waveform },
         envelope: { attack, decay, sustain, release }
       });
+      synth.maxPolyphony = 32; // Increase polyphony for more simultaneous notes
       
       // Create effects
       const reverb = new Tone.Reverb({ decay: 2.5, wet: reverbWet });
@@ -169,16 +216,26 @@ export const SimpleSynth: React.FC = () => {
     setActiveKeys(new Set(activeNotesRef.current));
   }, []);
   
-  // Keyboard event handlers
+  // Keyboard event handlers with octave shift
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle octave shifting
+      if (e.key === 'ArrowLeft' && !e.repeat) {
+        setBaseOctave(prev => Math.max(1, prev - 1));
+        return;
+      }
+      if (e.key === 'ArrowRight' && !e.repeat) {
+        setBaseOctave(prev => Math.min(6, prev + 1));
+        return;
+      }
+      
       if (e.repeat) return;
-      const note = KEYBOARD_MAP[e.key.toLowerCase()];
+      const note = keyboardMap[e.key.toLowerCase()];
       if (note) startNote(note);
     };
     
     const handleKeyUp = (e: KeyboardEvent) => {
-      const note = KEYBOARD_MAP[e.key.toLowerCase()];
+      const note = keyboardMap[e.key.toLowerCase()];
       if (note) stopNote(note);
     };
     
@@ -189,7 +246,7 @@ export const SimpleSynth: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [startNote, stopNote]);
+  }, [keyboardMap, startNote, stopNote]);
   
   // Piano key component
   const PianoKey: React.FC<{
@@ -230,6 +287,7 @@ export const SimpleSynth: React.FC = () => {
         onTouchEnd={handleEnd}
       >
         {keyboardKey && <span className="key-label">{keyboardKey.toUpperCase()}</span>}
+        {!isBlack && <span className="note-label">{note}</span>}
       </div>
     );
   };
@@ -241,6 +299,20 @@ export const SimpleSynth: React.FC = () => {
       </header>
       
       <div className="controls-grid">
+        <div className="control-section octave-control">
+          <h3>Octave Control</h3>
+          <div className="octave-display">
+            <button onClick={() => setBaseOctave(prev => Math.max(1, prev - 1))} disabled={baseOctave <= 1}>
+              ←
+            </button>
+            <span>Base Octave: {baseOctave}</span>
+            <button onClick={() => setBaseOctave(prev => Math.min(6, prev + 1))} disabled={baseOctave >= 6}>
+              →
+            </button>
+          </div>
+          <p className="hint">Use ← → arrow keys to shift octaves</p>
+        </div>
+        
         <div className="control-section">
           <h3>Volume</h3>
           <input
@@ -347,33 +419,46 @@ export const SimpleSynth: React.FC = () => {
         </div>
       </div>
       
-      <div className="virtual-keyboard">
-        {/* Render white keys first */}
-        {PIANO_KEYS.filter(key => !key.isBlack).map(key => {
-          const keyboardKey = Object.entries(KEYBOARD_MAP).find(([_, n]) => n === key.note)?.[0];
-          return (
-            <PianoKey
-              key={key.note}
-              note={key.note}
-              isBlack={false}
-              position={key.position}
-              keyboardKey={keyboardKey}
-            />
-          );
-        })}
-        {/* Render black keys on top */}
-        {PIANO_KEYS.filter(key => key.isBlack).map(key => {
-          const keyboardKey = Object.entries(KEYBOARD_MAP).find(([_, n]) => n === key.note)?.[0];
-          return (
-            <PianoKey
-              key={key.note}
-              note={key.note}
-              isBlack={true}
-              position={key.position}
-              keyboardKey={keyboardKey}
-            />
-          );
-        })}
+      <div className="keyboard-wrapper">
+        <div className="virtual-keyboard extended">
+          {/* Render white keys first */}
+          {pianoKeys.filter(key => !key.isBlack).map(key => {
+            const keyboardKey = Object.entries(keyboardMap).find(([_, n]) => n === key.note)?.[0];
+            return (
+              <PianoKey
+                key={key.note}
+                note={key.note}
+                isBlack={false}
+                position={key.position}
+                keyboardKey={keyboardKey}
+              />
+            );
+          })}
+          {/* Render black keys on top */}
+          {pianoKeys.filter(key => key.isBlack).map(key => {
+            const keyboardKey = Object.entries(keyboardMap).find(([_, n]) => n === key.note)?.[0];
+            return (
+              <PianoKey
+                key={key.note}
+                note={key.note}
+                isBlack={true}
+                position={key.position}
+                keyboardKey={keyboardKey}
+              />
+            );
+          })}
+          
+          {/* Octave indicators */}
+          {Array.from({ length: numOctaves }, (_, i) => (
+            <div
+              key={i}
+              className="octave-indicator"
+              style={{ left: `${i * 280}px` }}
+            >
+              C{startOctave + i}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
