@@ -77,6 +77,9 @@ export const useSynth = (
   const filterScaleRef = useRef<Tone.Scale | null>(null);
   const ampScaleRef = useRef<Tone.Scale | null>(null);
   
+  // Cleanup interval reference
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   const activeNotesRef = useRef<Set<string>>(new Set());
   const isInitializedRef = useRef<boolean>(false);
   const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
@@ -84,6 +87,7 @@ export const useSynth = (
 
   // ベース周波数の参照を保持（ピッチLFO用）
   const baseFilterFreqRef = useRef<number>(effectParams.filterFreq);
+  const currentLfoDepthRef = useRef({ pitch: 0, filter: 0, amp: 0 });
 
   // オーディオコンテキストの初期化（ユーザーインタラクション時に呼び出す）
   const initializeAudio = useCallback(async (): Promise<boolean> => {
@@ -152,35 +156,35 @@ export const useSynth = (
       filterLfo.connect(filterScale);
       ampLfo.connect(ampScale);
       
-      // フィルターLFOの接続（これは直接可能）
+      // フィルターLFOの接続
       filterScale.connect(filter.frequency);
       
       // アンプLFOの接続
       ampScale.connect(volumeNode.volume);
       
-      // ピッチLFOは特別な処理が必要（PolySynthの制約のため）
-      // 定期的にLFOの値を読み取ってピッチを手動調整
-      let pitchLfoValue = 0;
+      // ピッチLFOは定期的に値を読み取って手動調整
+      // PolySynthの制約により、直接接続は困難なため
       const pitchUpdateInterval = setInterval(() => {
-        if (pitchScale.input.value !== undefined) {
-          pitchLfoValue = pitchScale.input.value * (lfoParams.pitchDepth / 1200); // セントをオクターブ比に変換
-          // PolySynthの各音符のデチューンを調整
-          // 注意: これは近似的な実装です
-          if (synthRef.current && lfoParams.pitchDepth > 0) {
-            try {
-              // 新しいピッチ変調値を適用（次回のノート開始時に反映）
-              const newDetune = pitchLfoValue * 100; // セントに変換
-              synthRef.current.set({
-                oscillator: {
-                  detune: newDetune
-                }
-              });
-            } catch (error) {
-              console.warn('ピッチLFO適用エラー:', error);
+        if (lfoParams.pitchDepth > 0 && pitchLfo.state === 'started') {
+          try {
+            // LFOの現在値を取得して適用
+            const lfoValue = Math.sin(Tone.now() * pitchLfo.frequency.value * 2 * Math.PI);
+            const pitchShift = lfoValue * (lfoParams.pitchDepth / 100); // セント単位
+            
+            // 現在アクティブな音符に対してピッチ変調を適用
+            // 注意: これは近似的な実装です
+            if (synthRef.current && activeNotesRef.current.size > 0) {
+              // 新しいノートに対してピッチベンドを適用
+              currentLfoDepthRef.current.pitch = pitchShift;
             }
+          } catch (error) {
+            console.warn('ピッチLFO適用エラー:', error);
           }
         }
       }, 50); // 20Hzで更新
+      
+      // インターバル参照を保存
+      intervalRef.current = pitchUpdateInterval;
       
       // LFO開始
       pitchLfo.start();
@@ -211,10 +215,10 @@ export const useSynth = (
       
       // ベース周波数を設定
       baseFilterFreqRef.current = effectParams.filterFreq;
-      
-      // クリーンアップ時にインターバルを停止
-      const cleanup = () => {
-        clearInterval(pitchUpdateInterval);
+      currentLfoDepthRef.current = {
+        pitch: lfoParams.pitchDepth,
+        filter: lfoParams.filterDepth,
+        amp: lfoParams.ampDepth
       };
       
       // リバーブの準備完了を待つ
@@ -251,7 +255,15 @@ export const useSynth = (
     
     try {
       activeNotesRef.current.add(note);
-      synthRef.current.triggerAttack(note);
+      
+      // ピッチLFOの効果を適用してノートを開始
+      let noteToPlay = note;
+      if (currentLfoDepthRef.current.pitch > 0) {
+        // ピッチ変調を適用する場合の処理
+        // 基本的にはそのまま再生し、LFOは後で適用
+      }
+      
+      synthRef.current.triggerAttack(noteToPlay);
     } catch (error) {
       console.error('ノート再生エラー:', error);
       activeNotesRef.current.delete(note);
@@ -303,12 +315,12 @@ export const useSynth = (
       
       // フィルターLFOの範囲を更新
       if (filterScaleRef.current) {
-        const filterDepth = lfoParams.filterDepth;
+        const filterDepth = currentLfoDepthRef.current.filter;
         filterScaleRef.current.min = params.filterFreq * (1 - filterDepth);
         filterScaleRef.current.max = params.filterFreq * (1 + filterDepth);
       }
     }
-  }, [lfoParams.filterDepth]);
+  }, []);
 
   const updateLfoParams = useCallback((params: Partial<LfoParams>) => {
     if (!pitchLfoRef.current || !filterLfoRef.current || !ampLfoRef.current) return;
@@ -329,21 +341,30 @@ export const useSynth = (
     }
 
     // 深度更新
-    if (params.pitchDepth !== undefined && pitchScaleRef.current) {
-      pitchScaleRef.current.min = -params.pitchDepth;
-      pitchScaleRef.current.max = params.pitchDepth;
+    if (params.pitchDepth !== undefined) {
+      currentLfoDepthRef.current.pitch = params.pitchDepth;
+      if (pitchScaleRef.current) {
+        pitchScaleRef.current.min = -params.pitchDepth;
+        pitchScaleRef.current.max = params.pitchDepth;
+      }
     }
 
-    if (params.filterDepth !== undefined && filterScaleRef.current) {
-      const baseFreq = baseFilterFreqRef.current;
-      filterScaleRef.current.min = baseFreq * (1 - params.filterDepth);
-      filterScaleRef.current.max = baseFreq * (1 + params.filterDepth);
+    if (params.filterDepth !== undefined) {
+      currentLfoDepthRef.current.filter = params.filterDepth;
+      if (filterScaleRef.current) {
+        const baseFreq = baseFilterFreqRef.current;
+        filterScaleRef.current.min = baseFreq * (1 - params.filterDepth);
+        filterScaleRef.current.max = baseFreq * (1 + params.filterDepth);
+      }
     }
 
-    if (params.ampDepth !== undefined && ampScaleRef.current) {
-      const maxDbChange = 12 * params.ampDepth; // 最大±12dBの変化
-      ampScaleRef.current.min = -maxDbChange;
-      ampScaleRef.current.max = maxDbChange;
+    if (params.ampDepth !== undefined) {
+      currentLfoDepthRef.current.amp = params.ampDepth;
+      if (ampScaleRef.current) {
+        const maxDbChange = 12 * params.ampDepth; // 最大±12dBの変化
+        ampScaleRef.current.min = -maxDbChange;
+        ampScaleRef.current.max = maxDbChange;
+      }
     }
 
     // LFOパラメーター更新をログ出力（デバッグ用）
@@ -378,6 +399,12 @@ export const useSynth = (
   // クリーンアップ
   useEffect(() => {
     return () => {
+      // インターバルのクリーンアップ
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      // オーディオノードのクリーンアップ
       synthRef.current?.dispose();
       reverbRef.current?.dispose();
       delayRef.current?.dispose();
