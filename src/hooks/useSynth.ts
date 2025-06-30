@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import * as Tone from 'tone';
 import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, WaveformType } from '../constants/synth';
 
@@ -20,10 +20,12 @@ export interface EffectParams {
 
 export interface UseSynthReturn {
   synth: Tone.PolySynth | null;
-  startNote: (note: string) => void;
+  startNote: (note: string) => Promise<void>;
   stopNote: (note: string) => void;
   updateSynthParams: (params: Partial<SynthParams>) => void;
   updateEffectParams: (params: Partial<EffectParams>) => void;
+  isAudioReady: boolean;
+  audioError: string | null;
 }
 
 export const useSynth = (
@@ -37,13 +39,23 @@ export const useSynth = (
   const filterRef = useRef<Tone.Filter | null>(null);
   const volumeNodeRef = useRef<Tone.Volume | null>(null);
   const activeNotesRef = useRef<Set<string>>(new Set());
+  const isInitializedRef = useRef<boolean>(false);
+  const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
 
-  // Initialize synth and effects
-  useEffect(() => {
-    const initAudio = async () => {
+  // オーディオコンテキストの初期化（ユーザーインタラクション時に呼び出す）
+  const initializeAudio = useCallback(async (): Promise<boolean> => {
+    if (isInitializedRef.current) {
+      return true;
+    }
+
+    try {
+      // ユーザーインタラクションが必要
       await Tone.start();
       
-      // Create synth
+      console.log('AudioContext状態:', Tone.getContext().state);
+      
+      // シンセサイザーとエフェクトの作成
       const synth = new Tone.PolySynth(Tone.Synth, {
         oscillator: { type: synthParams.waveform },
         envelope: {
@@ -55,7 +67,7 @@ export const useSynth = (
       });
       synth.maxPolyphony = SYNTH_DEFAULTS.maxPolyphony;
       
-      // Create effects
+      // エフェクトの作成
       const reverb = new Tone.Reverb({ 
         decay: EFFECT_DEFAULTS.reverbDecay, 
         wet: effectParams.reverbWet 
@@ -76,7 +88,7 @@ export const useSynth = (
       });
       const volumeNode = new Tone.Volume(synthParams.volume);
       
-      // Connect audio chain
+      // オーディオチェーンの接続
       synth.connect(filter);
       filter.connect(chorus);
       chorus.connect(delay);
@@ -84,7 +96,7 @@ export const useSynth = (
       reverb.connect(volumeNode);
       volumeNode.toDestination();
       
-      // Store references
+      // リファレンスの保存
       synthRef.current = synth;
       reverbRef.current = reverb;
       delayRef.current = delay;
@@ -92,25 +104,60 @@ export const useSynth = (
       filterRef.current = filter;
       volumeNodeRef.current = volumeNode;
       
-      // Wait for reverb to be ready
+      // リバーブの準備完了を待つ
       await reverb.ready;
-    };
-    
-    initAudio();
-    
-    // Cleanup
-    return () => {
-      synthRef.current?.dispose();
-      reverbRef.current?.dispose();
-      delayRef.current?.dispose();
-      chorusRef.current?.dispose();
-      filterRef.current?.dispose();
-      volumeNodeRef.current?.dispose();
-    };
-  }, []); // Only initialize once
+      
+      isInitializedRef.current = true;
+      setIsAudioReady(true);
+      setAudioError(null);
+      
+      console.log('オーディオシステムが正常に初期化されました');
+      return true;
+      
+    } catch (error) {
+      console.error('オーディオ初期化エラー:', error);
+      const errorMessage = error instanceof Error ? error.message : 'オーディオの初期化に失敗しました';
+      setAudioError(errorMessage);
+      setIsAudioReady(false);
+      return false;
+    }
+  }, [synthParams, effectParams]);
 
-  // Update synth parameters
-  const updateSynthParams = (params: Partial<SynthParams>) => {
+  // ノートの開始（初期化を含む）
+  const startNote = useCallback(async (note: string): Promise<void> => {
+    // まだ初期化されていない場合は初期化を試行
+    if (!isInitializedRef.current) {
+      const initialized = await initializeAudio();
+      if (!initialized) {
+        console.warn('オーディオが初期化されていないため、音を再生できません');
+        return;
+      }
+    }
+
+    if (!synthRef.current || activeNotesRef.current.has(note)) return;
+    
+    try {
+      activeNotesRef.current.add(note);
+      synthRef.current.triggerAttack(note);
+    } catch (error) {
+      console.error('ノート再生エラー:', error);
+      activeNotesRef.current.delete(note);
+    }
+  }, [initializeAudio]);
+  
+  const stopNote = useCallback((note: string) => {
+    if (!synthRef.current || !activeNotesRef.current.has(note)) return;
+    
+    try {
+      activeNotesRef.current.delete(note);
+      synthRef.current.triggerRelease(note);
+    } catch (error) {
+      console.error('ノート停止エラー:', error);
+    }
+  }, []);
+
+  // パラメーター更新関数
+  const updateSynthParams = useCallback((params: Partial<SynthParams>) => {
     if (synthRef.current && (params.waveform || params.attack || params.decay || params.sustain || params.release)) {
       synthRef.current.set({
         oscillator: params.waveform ? { type: params.waveform } : undefined,
@@ -125,10 +172,9 @@ export const useSynth = (
     if (params.volume !== undefined && volumeNodeRef.current) {
       volumeNodeRef.current.volume.value = params.volume;
     }
-  };
+  }, [synthParams]);
 
-  // Update effect parameters
-  const updateEffectParams = (params: Partial<EffectParams>) => {
+  const updateEffectParams = useCallback((params: Partial<EffectParams>) => {
     if (params.reverbWet !== undefined && reverbRef.current) {
       reverbRef.current.wet.value = params.reverbWet;
     }
@@ -141,37 +187,40 @@ export const useSynth = (
     if (params.filterFreq !== undefined && filterRef.current) {
       filterRef.current.frequency.value = params.filterFreq;
     }
-  };
+  }, []);
 
-  // Note handling
-  const startNote = (note: string) => {
-    if (!synthRef.current || activeNotesRef.current.has(note)) return;
-    
-    activeNotesRef.current.add(note);
-    synthRef.current.triggerAttack(note);
-  };
-  
-  const stopNote = (note: string) => {
-    if (!synthRef.current || !activeNotesRef.current.has(note)) return;
-    
-    activeNotesRef.current.delete(note);
-    synthRef.current.triggerRelease(note);
-  };
-
-  // Update parameters when they change
+  // パラメーター変更時の更新
   useEffect(() => {
-    updateSynthParams(synthParams);
-  }, [synthParams]);
+    if (isInitializedRef.current) {
+      updateSynthParams(synthParams);
+    }
+  }, [synthParams, updateSynthParams]);
 
   useEffect(() => {
-    updateEffectParams(effectParams);
-  }, [effectParams]);
+    if (isInitializedRef.current) {
+      updateEffectParams(effectParams);
+    }
+  }, [effectParams, updateEffectParams]);
+
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      synthRef.current?.dispose();
+      reverbRef.current?.dispose();
+      delayRef.current?.dispose();
+      chorusRef.current?.dispose();
+      filterRef.current?.dispose();
+      volumeNodeRef.current?.dispose();
+    };
+  }, []);
 
   return {
     synth: synthRef.current,
     startNote,
     stopNote,
     updateSynthParams,
-    updateEffectParams
+    updateEffectParams,
+    isAudioReady,
+    audioError
   };
 };
