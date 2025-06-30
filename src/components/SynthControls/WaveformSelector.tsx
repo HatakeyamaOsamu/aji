@@ -9,7 +9,6 @@ export interface WaveformSelectorProps {
 
 const WaveformDisplay: React.FC<{ waveform: WaveformType }> = ({ waveform }) => {
   const generatePath = (type: WaveformType): string => {
-    const width = 80;
     const height = 30;
     const centerY = height / 2;
     
