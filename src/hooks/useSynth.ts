@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import * as Tone from 'tone';
-import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, WaveformType } from '../constants/synth';
+import { SYNTH_DEFAULTS, EFFECT_DEFAULTS, LFO_DEFAULTS, WaveformType, LfoWaveformType } from '../constants/synth';
 
 export interface SynthParams {
   volume: number;
@@ -18,19 +18,30 @@ export interface EffectParams {
   filterFreq: number;
 }
 
+export interface LfoParams {
+  rate: number;
+  pitchDepth: number;
+  filterDepth: number;
+  ampDepth: number;
+  waveform: LfoWaveformType;
+  sync: boolean;
+}
+
 export interface UseSynthReturn {
   synth: Tone.PolySynth | null;
   startNote: (note: string) => Promise<void>;
   stopNote: (note: string) => void;
   updateSynthParams: (params: Partial<SynthParams>) => void;
   updateEffectParams: (params: Partial<EffectParams>) => void;
+  updateLfoParams: (params: Partial<LfoParams>) => void;
   isAudioReady: boolean;
   audioError: string | null;
 }
 
 export const useSynth = (
   synthParams: SynthParams,
-  effectParams: EffectParams
+  effectParams: EffectParams,
+  lfoParams: LfoParams
 ): UseSynthReturn => {
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const reverbRef = useRef<Tone.Reverb | null>(null);
@@ -38,6 +49,13 @@ export const useSynth = (
   const chorusRef = useRef<Tone.Chorus | null>(null);
   const filterRef = useRef<Tone.Filter | null>(null);
   const volumeNodeRef = useRef<Tone.Volume | null>(null);
+  
+  // LFO references
+  const lfoRef = useRef<Tone.LFO | null>(null);
+  const pitchSignalRef = useRef<Tone.Signal | null>(null);
+  const filterSignalRef = useRef<Tone.Signal | null>(null);
+  const ampSignalRef = useRef<Tone.Signal | null>(null);
+  
   const activeNotesRef = useRef<Set<string>>(new Set());
   const isInitializedRef = useRef<boolean>(false);
   const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
@@ -88,6 +106,36 @@ export const useSynth = (
       });
       const volumeNode = new Tone.Volume(synthParams.volume);
       
+      // LFOとモジュレーション信号の作成
+      const lfo = new Tone.LFO({
+        frequency: lfoParams.rate,
+        type: lfoParams.waveform === 'random' ? 'noise' : lfoParams.waveform
+      });
+      
+      // LFOモジュレーション用の信号
+      const pitchSignal = new Tone.Signal(0);
+      const filterSignal = new Tone.Signal(0);
+      const ampSignal = new Tone.Signal(0);
+      
+      // LFOモジュレーション接続
+      if (lfoParams.pitchDepth > 0) {
+        lfo.connect(pitchSignal);
+        pitchSignal.connect(synth.frequency);
+      }
+      
+      if (lfoParams.filterDepth > 0) {
+        lfo.connect(filterSignal);
+        filterSignal.connect(filter.frequency);
+      }
+      
+      if (lfoParams.ampDepth > 0) {
+        lfo.connect(ampSignal);
+        ampSignal.connect(volumeNode.volume);
+      }
+      
+      // LFO開始
+      lfo.start();
+      
       // オーディオチェーンの接続
       synth.connect(filter);
       filter.connect(chorus);
@@ -103,6 +151,10 @@ export const useSynth = (
       chorusRef.current = chorus;
       filterRef.current = filter;
       volumeNodeRef.current = volumeNode;
+      lfoRef.current = lfo;
+      pitchSignalRef.current = pitchSignal;
+      filterSignalRef.current = filterSignal;
+      ampSignalRef.current = ampSignal;
       
       // リバーブの準備完了を待つ
       await reverb.ready;
@@ -121,7 +173,7 @@ export const useSynth = (
       setIsAudioReady(false);
       return false;
     }
-  }, [synthParams, effectParams]);
+  }, [synthParams, effectParams, lfoParams]);
 
   // ノートの開始（初期化を含む）
   const startNote = useCallback(async (note: string): Promise<void> => {
@@ -189,6 +241,34 @@ export const useSynth = (
     }
   }, []);
 
+  const updateLfoParams = useCallback((params: Partial<LfoParams>) => {
+    if (!lfoRef.current) return;
+
+    if (params.rate !== undefined) {
+      lfoRef.current.frequency.value = params.rate;
+    }
+
+    if (params.waveform !== undefined) {
+      lfoRef.current.type = params.waveform === 'random' ? 'noise' : params.waveform;
+    }
+
+    // モジュレーションの深さを調整
+    if (params.pitchDepth !== undefined && pitchSignalRef.current) {
+      // セント単位をHz単位に変換してモジュレーション
+      pitchSignalRef.current.value = params.pitchDepth;
+    }
+
+    if (params.filterDepth !== undefined && filterSignalRef.current) {
+      // フィルターカットオフのモジュレーション
+      filterSignalRef.current.value = params.filterDepth * 1000; // 0-1000Hzの範囲
+    }
+
+    if (params.ampDepth !== undefined && ampSignalRef.current) {
+      // アンプリチュードのモジュレーション（dB単位）
+      ampSignalRef.current.value = params.ampDepth * -20; // 0から-20dBの範囲
+    }
+  }, []);
+
   // パラメーター変更時の更新
   useEffect(() => {
     if (isInitializedRef.current) {
@@ -202,6 +282,12 @@ export const useSynth = (
     }
   }, [effectParams, updateEffectParams]);
 
+  useEffect(() => {
+    if (isInitializedRef.current) {
+      updateLfoParams(lfoParams);
+    }
+  }, [lfoParams, updateLfoParams]);
+
   // クリーンアップ
   useEffect(() => {
     return () => {
@@ -211,6 +297,10 @@ export const useSynth = (
       chorusRef.current?.dispose();
       filterRef.current?.dispose();
       volumeNodeRef.current?.dispose();
+      lfoRef.current?.dispose();
+      pitchSignalRef.current?.dispose();
+      filterSignalRef.current?.dispose();
+      ampSignalRef.current?.dispose();
     };
   }, []);
 
@@ -220,6 +310,7 @@ export const useSynth = (
     stopNote,
     updateSynthParams,
     updateEffectParams,
+    updateLfoParams,
     isAudioReady,
     audioError
   };
