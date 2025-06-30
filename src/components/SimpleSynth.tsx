@@ -6,6 +6,7 @@ import { WaveformSelector } from './SynthControls/WaveformSelector';
 import { EnvelopeControl } from './SynthControls/EnvelopeControl';
 import { FilterControl } from './SynthControls/FilterControl';
 import { EffectsControl } from './SynthControls/EffectsControl';
+import { WaveformVisualizer } from './WaveformVisualizer';
 import { useSynth } from '../hooks/useSynth';
 import { useKeyboardInput } from '../hooks/useKeyboardInput';
 import { usePianoKeys } from '../hooks/usePianoKeys';
@@ -19,9 +20,9 @@ export const SimpleSynth: React.FC = () => {
   const [baseOctave, setBaseOctave] = useState(DEFAULT_BASE_OCTAVE);
   const keyboardMap = getKeyboardMap(baseOctave);
   
-  // Piano display settings - C2~C5 (3 octaves + C)
+  // Piano display settings - C2~C6 (4 octaves + C)
   const startOctave = 2;
-  const numOctaves = 3;
+  const numOctaves = 4;
   const pianoKeys = usePianoKeys({ startOctave, numOctaves });
   
   // Synth parameters state
@@ -85,6 +86,7 @@ export const SimpleSynth: React.FC = () => {
     <div className="synth-container">
       <header className="synth-header">
         <h1>Web Synth</h1>
+        <WaveformVisualizer isActive={activeKeys.size > 0} />
       </header>
       
       <div className="controls-grid">
@@ -134,8 +136,8 @@ export const SimpleSynth: React.FC = () => {
         onNoteStop={stopNote}
       />
       
-      {/* Octave Control - moved to bottom corner */}
-      <div className="octave-control-bottom">
+      {/* Octave Control - minimal bottom corner */}
+      <div className="octave-control-minimal">
         <OctaveControl 
           baseOctave={baseOctave} 
           onChange={setBaseOctave} 
