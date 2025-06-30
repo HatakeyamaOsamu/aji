@@ -41,25 +41,38 @@ export const SimpleSynth: React.FC = () => {
   // Active keys state
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
   
-  // Initialize synth
-  const { startNote: synthStartNote, stopNote: synthStopNote } = useSynth(
+  // Initialize synth with audio status
+  const { 
+    startNote: synthStartNote, 
+    stopNote: synthStopNote,
+    isAudioReady,
+    audioError
+  } = useSynth(
     { volume, attack, decay, sustain, release, waveform },
     { reverbWet, delayWet, chorusWet, filterFreq }
   );
   
-  // Note handling with active keys update
-  const startNote = (note: string) => {
-    synthStartNote(note);
-    setActiveKeys(prev => new Set([...prev, note]));
+  // Note handling with error handling and active keys update
+  const startNote = async (note: string) => {
+    try {
+      await synthStartNote(note);
+      setActiveKeys(prev => new Set([...prev, note]));
+    } catch (error) {
+      console.error('ノート開始エラー:', error);
+    }
   };
   
   const stopNote = (note: string) => {
-    synthStopNote(note);
-    setActiveKeys(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(note);
-      return newSet;
-    });
+    try {
+      synthStopNote(note);
+      setActiveKeys(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(note);
+        return newSet;
+      });
+    } catch (error) {
+      console.error('ノート停止エラー:', error);
+    }
   };
   
   // Keyboard input handling
@@ -74,6 +87,23 @@ export const SimpleSynth: React.FC = () => {
     <div className="synth-container">
       <header className="synth-header">
         <h1>Musako - Simple Browser Synthesizer</h1>
+        
+        {/* Audio status display */}
+        <div className="audio-status">
+          {audioError ? (
+            <div className="audio-error">
+              ❌ 音声エラー: {audioError}
+              <br />
+              <small>ページを再読み込みして、鍵盤をクリックしてください</small>
+            </div>
+          ) : isAudioReady ? (
+            <div className="audio-ready">🎵 音声準備完了</div>
+          ) : (
+            <div className="audio-waiting">
+              🔊 音を鳴らすには、鍵盤をクリックしてください
+            </div>
+          )}
+        </div>
       </header>
       
       <div className="controls-grid">
