@@ -169,25 +169,29 @@
   display: none; /* Hide hint */
 }
 
-/* Keyboard Wrapper */
+/* Keyboard Wrapper - Black background with centered keyboard */
 .keyboard-wrapper {
   background: #222;
   border-radius: 8px;
   padding: 20px;
   overflow-x: auto;
   overflow-y: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-/* Virtual Keyboard - 4 octaves + C */
+/* Virtual Keyboard - Centered in black background */
 .virtual-keyboard {
   position: relative;
   height: 200px;
-  min-width: 1140px; /* 4 octaves * 280px + padding */
-  margin: 0 20px; /* Add left and right margins */
+  width: 1140px; /* 4 octaves * 280px + padding */
+  margin: 0 auto; /* Center the keyboard */
 }
 
 .virtual-keyboard.extended {
   width: 1160px; /* Exact width for 4 octaves + final C + margins */
+  margin: 0 auto; /* Center the extended keyboard */
 }
 
 /* Piano Keys */
@@ -224,14 +228,14 @@
 .black-key {
   width: 24px;
   height: 100px;
-  background: #222;
-  border: 1px solid #000;
+  background: #333;
+  border: 1px solid #111;
   border-radius: 0 0 4px 4px;
   z-index: 2;
 }
 
 .black-key:hover {
-  background: #333;
+  background: #444;
 }
 
 .black-key.active {
@@ -293,7 +297,7 @@
   
   .virtual-keyboard {
     height: 150px;
-    min-width: 860px;
+    width: 860px;
   }
   
   .white-key {
