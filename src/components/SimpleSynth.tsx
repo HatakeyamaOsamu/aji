@@ -19,9 +19,9 @@ export const SimpleSynth: React.FC = () => {
   const [baseOctave, setBaseOctave] = useState(DEFAULT_BASE_OCTAVE);
   const keyboardMap = getKeyboardMap(baseOctave);
   
-  // Piano display settings
+  // Piano display settings - C2~C5 (3 octaves + C)
   const startOctave = 2;
-  const numOctaves = 5;
+  const numOctaves = 3;
   const pianoKeys = usePianoKeys({ startOctave, numOctaves });
   
   // Synth parameters state
@@ -41,18 +41,16 @@ export const SimpleSynth: React.FC = () => {
   // Active keys state
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
   
-  // Initialize synth with audio status
+  // Initialize synth
   const { 
     startNote: synthStartNote, 
-    stopNote: synthStopNote,
-    isAudioReady,
-    audioError
+    stopNote: synthStopNote
   } = useSynth(
     { volume, attack, decay, sustain, release, waveform },
     { reverbWet, delayWet, chorusWet, filterFreq }
   );
   
-  // Note handling with error handling and active keys update
+  // Note handling
   const startNote = async (note: string) => {
     try {
       await synthStartNote(note);
@@ -86,32 +84,10 @@ export const SimpleSynth: React.FC = () => {
   return (
     <div className="synth-container">
       <header className="synth-header">
-        <h1>Musako - Simple Browser Synthesizer</h1>
-        
-        {/* Audio status display */}
-        <div className="audio-status">
-          {audioError ? (
-            <div className="audio-error">
-              ❌ 音声エラー: {audioError}
-              <br />
-              <small>ページを再読み込みして、鍵盤をクリックしてください</small>
-            </div>
-          ) : isAudioReady ? (
-            <div className="audio-ready">🎵 音声準備完了</div>
-          ) : (
-            <div className="audio-waiting">
-              🔊 音を鳴らすには、鍵盤をクリックしてください
-            </div>
-          )}
-        </div>
+        <h1>Web Synth</h1>
       </header>
       
       <div className="controls-grid">
-        <OctaveControl 
-          baseOctave={baseOctave} 
-          onChange={setBaseOctave} 
-        />
-        
         <VolumeControl 
           volume={volume} 
           onChange={setVolume} 
@@ -157,6 +133,14 @@ export const SimpleSynth: React.FC = () => {
         onNoteStart={startNote}
         onNoteStop={stopNote}
       />
+      
+      {/* Octave Control - moved to bottom corner */}
+      <div className="octave-control-bottom">
+        <OctaveControl 
+          baseOctave={baseOctave} 
+          onChange={setBaseOctave} 
+        />
+      </div>
     </div>
   );
 };
