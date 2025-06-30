@@ -1,165 +1,26 @@
-# Musako - Advanced Web Synthesizer
+# Musako - Simple Browser Synthesizer
 
-A high-performance polyphonic synthesizer built with React, TypeScript, and Tone.js, featuring advanced voice management and real-time audio processing.
+A polyphonic web synthesizer built with React, TypeScript, and Tone.js, featuring real-time audio processing and an intuitive interface.
 
 ## 🎹 Features
 
-- **16-voice polyphony** with intelligent voice stealing
-- **Voice pool management** for zero-latency note triggering
+- **Polyphonic synthesis** with intelligent voice management
 - **Multiple oscillator waveforms**: Sine, Square, Sawtooth, Triangle
 - **Advanced ADSR envelope** control
 - **Multi-mode filter**: Lowpass, Highpass, Bandpass, Notch
 - **Professional effects chain**: Chorus, Delay, Reverb
-- **Real-time waveform visualization**
 - **Virtual piano keyboard** with touch support
 - **Computer keyboard mapping** for live performance
+- **Octave shifting** for extended range
+- **Audio status monitoring** with user-friendly feedback
 
-## 🏗️ Architecture
-
-### System Overview
-
-```mermaid
-graph TD
-    subgraph "User Interface (React)"
-        A[App Component]
-        B[Controls]
-        C[Virtual Keyboard]
-        D[Visualizer]
-    end
-    
-    subgraph "Audio Engine (TypeScript)"
-        E[SynthEngine]
-        F[VoicePool]
-        G[Voice x16]
-        H[EffectController]
-    end
-    
-    subgraph "Audio Processing (Tone.js)"
-        I[Filter]
-        J[Chorus]
-        K[Delay]
-        L[Reverb]
-        M[Master Volume]
-        N[Analyser]
-        O[Audio Context]
-    end
-    
-    A --> B
-    A --> C
-    A --> D
-    
-    B --> E
-    B --> H
-    C --> E
-    D --> N
-    
-    E --> F
-    F --> G
-    G --> I
-    H --> I
-    H --> J
-    H --> K
-    H --> L
-    
-    I --> J
-    J --> K
-    K --> L
-    L --> M
-    M --> N
-    N --> O
-```
-
-### Voice Pool Management
-
-The synthesizer uses an advanced voice pool system for optimal performance:
-
-```mermaid
-stateDiagram-v2
-    [*] --> Initialize: Create 16 voices
-    Initialize --> Pool: All voices ready
-    
-    Pool --> Active: Key pressed
-    Active --> Release: Key released
-    Release --> Pool: After release time
-    
-    Pool --> Steal: Pool empty
-    Steal --> Active: Reuse oldest voice
-```
-
-### Key Components
-
-#### 1. **SynthEngine** (`src/synth/SynthEngine.ts`)
-- Manages the audio context and effect chain
-- Handles note triggering and voice allocation
-- Coordinates between UI and audio processing
-
-#### 2. **VoicePool** (`src/synth/VoicePool.ts`)
-- Pre-allocates 16 synthesizer voices
-- Implements voice stealing algorithm
-- Ensures zero-latency note triggering
-
-#### 3. **Voice** (`src/synth/Voice.ts`)
-- Individual synthesizer voice with Tone.Synth
-- Configurable oscillator and envelope
-- Efficient parameter updates
-
-#### 4. **EffectController** (`src/effects/EffectController.ts`)
-- Manages the audio effects chain
-- Real-time parameter control
-- Proper signal routing
-
-## 🚀 Performance Optimizations
-
-1. **Voice Pre-allocation**: All 16 voices are created at initialization
-2. **Single Audio Context**: Tone.start() is called only once
-3. **Efficient Voice Stealing**: Oldest voices are reused when pool is full
-4. **Optimized React Rendering**: Context API for state management
-5. **TypeScript Type Safety**: Compile-time error checking
-
-## 🛠️ Tech Stack
-
-- **React 18** - UI framework with hooks
-- **TypeScript 5** - Type-safe development
-- **Tone.js 14** - Web Audio synthesis
-- **Vite 5** - Fast build tool and dev server
-- **Context API** - State management
-
-## 📁 Project Structure
-
-```
-src/
-├── components/     # React components
-│   └── App.tsx    # Main application component
-├── contexts/      # React contexts
-│   └── SynthContext.tsx
-├── effects/       # Audio effects
-│   ├── EffectController.ts
-│   └── index.ts
-├── synth/         # Synthesizer core
-│   ├── SynthEngine.ts
-│   ├── VoicePool.ts
-│   ├── Voice.ts
-│   └── index.ts
-├── types/         # TypeScript definitions
-│   └── index.ts
-├── ui/            # UI components
-│   ├── Controls.ts
-│   ├── VirtualKeyboard.ts
-│   ├── Visualizer.ts
-│   └── index.ts
-├── utils/         # Utilities
-│   └── constants.ts
-├── styles/        # CSS styles
-│   └── index.css
-└── main.tsx       # Application entry
-```
-
-## 🎮 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js 16+ and npm
 - Modern web browser with Web Audio API support
+- **HTTPS connection** (required for Web Audio API)
 
 ### Installation
 
@@ -170,25 +31,84 @@ cd musako
 
 # Install dependencies
 npm install
-```
 
-### Development
-
-```bash
 # Start development server
 npm run dev
-
-# Type checking
-npm run type-check
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
 ```
 
-## 🎹 Usage Guide
+### First Time Usage
+
+1. Open the application in your browser
+2. **Click on any piano key** to initialize audio
+3. Look for the audio status indicator:
+   - 🔊 "音を鳴らすには、鍵盤をクリックしてください" - Click a key to start
+   - 🎵 "音声準備完了" - Audio is ready
+   - ❌ "音声エラー" - See troubleshooting below
+
+## 🔧 Troubleshooting
+
+### No Sound Issue
+
+If you experience no sound when pressing keys, try these solutions:
+
+#### 1. **Browser Autoplay Policy**
+Modern browsers require user interaction before playing audio:
+- **Solution**: Click any piano key or press any keyboard key
+- The status indicator will show when audio is ready
+
+#### 2. **HTTPS Requirement**
+Web Audio API requires a secure connection:
+- **Development**: `npm run dev` should serve on `https://localhost:5173`
+- **Production**: Ensure your site is served over HTTPS
+
+#### 3. **Browser Compatibility**
+- **Chrome**: Full support ✅
+- **Firefox**: Full support ✅
+- **Safari**: May require additional user interaction ⚠️
+- **Mobile**: Touch a key to initialize audio 📱
+
+#### 4. **System Audio**
+- Check system volume and audio output device
+- Ensure browser has permission to play audio
+- Try refreshing the page and clicking a key again
+
+#### 5. **Console Debugging**
+Open browser developer tools and check for errors:
+```javascript
+// Check audio context state
+console.log('AudioContext state:', Tone.getContext().state);
+
+// Manual audio test
+Tone.start().then(() => {
+  const synth = new Tone.Synth().toDestination();
+  synth.triggerAttackRelease("C4", "8n");
+});
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── components/           # React components
+│   ├── SimpleSynth.tsx  # Main synthesizer component
+│   ├── Piano/           # Virtual keyboard components
+│   └── SynthControls/   # Control panel components
+├── hooks/               # Custom React hooks
+│   ├── useSynth.ts     # Audio synthesis logic
+│   ├── useKeyboardInput.ts
+│   └── usePianoKeys.ts
+├── constants/           # Configuration constants
+│   ├── keyboard.ts     # Keyboard mappings
+│   └── synth.ts        # Synth default values
+├── utils/              # Utility functions
+│   └── noteMapping.ts  # Note to frequency mapping
+├── styles/             # CSS styles
+│   ├── index.css      # Global styles
+│   └── synth.css      # Component styles
+└── main.tsx           # Application entry point
+```
+
+## 🎮 Usage Guide
 
 ### Keyboard Mapping
 
@@ -197,49 +117,81 @@ Piano Layout:
   Black Keys:  S D   G H J   2 3   5 6 7
 White Keys: Z X C V B N M Q W E R T Y U I
 
-Notes:
-C3  C#3 D3  D#3 E3  F3  F#3 G3  G#3 A3  A#3 B3  C4  C#4 D4  D#4 E4  F4  F#4 G4  G#4 A4  A#4 B4  C5
+Base Octave Controls:
+- Left Arrow (←): Lower octave
+- Right Arrow (→): Higher octave
+- Current range displays in the UI
 ```
 
 ### Synthesis Parameters
 
 #### Oscillator
 - **Waveforms**: Sine, Square, Sawtooth, Triangle
-- **Polyphony**: Up to 16 simultaneous voices
+- **Polyphony**: Up to 32 simultaneous voices
 
 #### Envelope (ADSR)
-- **Attack**: 0.01s - 2s
-- **Decay**: 0.01s - 2s
+- **Attack**: 0.005s - 2s
+- **Decay**: 0.1s - 2s  
 - **Sustain**: 0% - 100%
-- **Release**: 0.01s - 5s
+- **Release**: 0.3s - 5s
 
 #### Filter
-- **Types**: Lowpass, Highpass, Bandpass, Notch
-- **Cutoff**: 20Hz - 20kHz
-- **Resonance (Q)**: 0.1 - 30
+- **Frequency**: 20Hz - 20kHz
+- **Type**: Lowpass (configurable)
 
 #### Effects
-- **Chorus**: Rate, Depth, Mix
-- **Delay**: Time, Feedback, Mix
-- **Reverb**: Size, Dampening, Mix
+- **Chorus**: Depth and mix control
+- **Delay**: Time, feedback, and mix
+- **Reverb**: Room size and mix
 
-## 🔧 Advanced Configuration
+## 🛠️ Development
 
-### Customizing Voice Count
+### Available Scripts
 
-Edit `src/utils/constants.ts`:
+```bash
+# Development
+npm run dev          # Start development server
+npm run type-check   # TypeScript type checking
 
-```typescript
-export const MAX_VOICES = 16; // Adjust polyphony limit
+# Production
+npm run build        # Build for production
+npm run preview      # Preview production build
 ```
 
-### Adding New Waveforms
+### Tech Stack
 
-Extend the oscillator types in `src/types/index.ts`:
+- **React 18** - UI framework with hooks
+- **TypeScript 5** - Type-safe development  
+- **Tone.js 14** - Web Audio synthesis
+- **Vite 5** - Fast build tool and dev server
 
-```typescript
-export type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle' | 'custom';
-```
+## 🔍 Key Features Explained
+
+### Audio Initialization
+The synthesizer uses a **user-interaction-first** approach to comply with browser autoplay policies:
+
+1. Audio context remains suspended until user interaction
+2. First key press initializes the audio system
+3. Status indicator provides clear feedback
+4. Graceful error handling with user-friendly messages
+
+### Voice Management
+- Pre-allocated voice pool for optimal performance
+- Smart voice stealing when limit is reached
+- Real-time parameter updates across all voices
+
+### Browser Compatibility
+Tested and optimized for:
+- Chrome 90+ ✅
+- Firefox 88+ ✅  
+- Safari 14+ ⚠️ (may need extra interaction)
+- Mobile browsers 📱 (touch-optimized)
+
+## 🐛 Known Issues
+
+1. **Safari Audio Delay**: Safari may require multiple interactions to start audio
+2. **Mobile Performance**: Complex effects may cause latency on older devices
+3. **Firefox Volume**: Some users report lower volume on Firefox
 
 ## 🤝 Contributing
 
@@ -249,16 +201,25 @@ export type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle' | 'cust
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
+## 📝 Recent Updates
+
+- **Fixed**: Browser autoplay policy compliance
+- **Added**: Audio status monitoring and user feedback
+- **Improved**: Error handling and user experience
+- **Enhanced**: Mobile touch support
+
+## 📄 License
 
 MIT License - see [LICENSE](LICENSE) for details
 
 ## 🙏 Acknowledgments
 
-- [Tone.js](https://tonejs.github.io/) for the amazing Web Audio framework
+- [Tone.js](https://tonejs.github.io/) for the powerful Web Audio framework
 - [React](https://react.dev/) for the UI framework
-- [Vite](https://vitejs.dev/) for the blazing fast build tool
+- [Vite](https://vitejs.dev/) for the fast build tooling
 
 ---
+
+**Need Help?** Check the troubleshooting section above or open an issue on GitHub.
 
 Made with ♪ by [HatakeyamaOsamu](https://github.com/HatakeyamaOsamu)
