@@ -4,13 +4,11 @@ import './SynthControls.css';
 
 interface LfoControlProps {
   rate: number;
-  pitchDepth: number;
   filterDepth: number;
   ampDepth: number;
   waveform: LfoWaveformType;
   sync: boolean;
   onRateChange: (rate: number) => void;
-  onPitchDepthChange: (depth: number) => void;
   onFilterDepthChange: (depth: number) => void;
   onAmpDepthChange: (depth: number) => void;
   onWaveformChange: (waveform: LfoWaveformType) => void;
@@ -19,13 +17,11 @@ interface LfoControlProps {
 
 export const LfoControl: React.FC<LfoControlProps> = ({
   rate,
-  pitchDepth,
   filterDepth,
   ampDepth,
   waveform,
   sync,
   onRateChange,
-  onPitchDepthChange,
   onFilterDepthChange,
   onAmpDepthChange,
   onWaveformChange,
@@ -73,22 +69,6 @@ export const LfoControl: React.FC<LfoControlProps> = ({
             <h4 className="lfo-target-title">Modulation Targets</h4>
             
             <div className="lfo-target-controls">
-              <div className="lfo-control">
-                <label>Pitch</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1200"
-                  step="1"
-                  value={pitchDepth}
-                  onChange={(e) => onPitchDepthChange(parseFloat(e.target.value))}
-                  className="control-slider"
-                />
-                <span className="control-value">
-                  {pitchDepth === 0 ? 'Off' : `${pitchDepth} cents`}
-                </span>
-              </div>
-              
               <div className="lfo-control">
                 <label>Filter</label>
                 <input
